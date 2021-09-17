@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    {% load static %}
+    {% include "argos/icaro/header.html" %}
+  </head>
+  <body>
+    {% include "argos/icaro/fixedtopbar.html" %}
+    <!--<div>Ícones feitos por <a href="https://www.flaticon.com/br/autores/dinosoftlabs" title="DinosoftLabs">DinosoftLabs</a> from <a href="https://www.flaticon.com/br/" title="Flaticon">www.flaticon.com</a></div>-->
+    <!--<div>Ícones feitos por <a href="https://www.freepik.com" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/br/" title="Flaticon">www.flaticon.com</a></div>-->
+    <!--<div>Ícones feitos por <a href="https://www.freepik.com" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/br/" title="Flaticon">www.flaticon.com</a></div>-->
+    <!--<div>Ícones feitos por <a href="https://www.flaticon.com/br/autores/iconixar" title="iconixar">iconixar</a> from <a href="https://www.flaticon.com/br/" title="Flaticon">www.flaticon.com</a></div>-->
+    {% if request.user.is_authenticated %}
+      <!-- Botoes na Tela Principal -->
+      <div class="container-fluid" style="margin-top:4em">
+        <div class="d-flex justify-content-center flex-wrap" id="app-buttons-div">
+
+          <a href="">
+            <button type="button" class="btn  btn-outline-primary">
+              <img src="{% static 'img/icaro/voltimetro.png' %}">
+              <p>Medições</p>
+            </button>
+          </a>
+
+          <a href="">
+            <button type="button" class="btn  btn-outline-primary">
+              <img src="{% static 'img/icaro/grafico-de-linha.png' %}" style="margin-top: 30px;">
+              <p>Campanha de Medidas</p>
+            </button>
+          </a>
+
+          <a href={% url 'argos:whitetarifflist' %}>
+            <button type="button" class="btn  btn-outline-primary">
+              <img src="{% static 'img/icaro/conta.png' %}">
+              <p>Tarifa Branca</p>
+            </button>
+          </a>
+
+          <a href="">
+            <button type="button" class="btn  btn-outline-primary">
+              <img src="{% static 'img/icaro/classe-energetica.png' %}" style="margin-top: 30px;">
+              <p>Eficiência Energética</p>
+            </button>
+          </a>
+
+        </div>
+      </div>
+    {% else %}
+      <!-- Início do carrossel -->
+      <div id="myCarousel" class="carousel slide" data-ride="carousel" style="margin-top:58px;height=100%">
+    
+        <!-- Wrapper for slides -->
+        <div class="carousel-inner">
+          <div class="carousel-item active">
+            <img class="d-block w-100" src="{% static 'img/icaro/banner.jpg' %}" alt="Primeiro Slide">
+            <div class="carousel-caption d-none d-md-block">
+              <h1>ÍCARO</h1>
+              <h4>A plataforma de medidores da CELESC</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Fim do carrossel -->
+    {% endif %}
+
+    {% include "argos/icaro/fixedbottombar.html" %}
+
+    <script type="text/javascript" src="{% static 'js/jquery.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/bootstrap.min.js' %}"></script>
+
+  </body>
+</html>

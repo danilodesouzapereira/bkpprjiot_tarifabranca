@@ -1,0 +1,98 @@
+<nav class="navbar navbar-shadow col-md-2 d-none d-md-block bg-light" style="height=8%;position:fixed;overflow:auto" id="navMenu2">
+  <ul class="nav navbar-nav">
+    <div>
+      <label class="control-label mr-sm-2" style="font-size:85%">Filtro de medições</label>
+    </div>
+    <form class="form-inline" method="post" action="{% url 'argos:whitetariff' meter.mac %}">
+      {% csrf_token %}
+      <div class="form-group" style="margin-top:1px">
+        <label class="control-label mr-sm-2" style="font-size:70%">Data inicial:</label>
+      </div>
+      <div class="form-group" style="margin-top:3px">
+        <input type="datetime-local" class="form-control mb-2 mr-sm-2" style="font-size:70%" size="10" id="datetime_ini" name="datetime_ini" min="{{ datetime_ini_min }}" max="{{ datetime_fin_max }}" value="{{ datetime_ini }}" />
+      </div>
+      <div class="form-group" style="margin-top:3px">
+        <label class="control-label mr-sm-2" style="font-size:70%">Data final:</label>
+      </div>
+      <div class="form-group" style="margin-top:3px">
+        <input type="datetime-local" class="form-control mb-2 mr-sm-2" style="font-size:70%" size="10" id="datetime_fin" name="datetime_fin" min="{{ datetime_ini_min }}" max="{{ datetime_fin_max }}" value="{{ datetime_fin }}" />
+      </div>
+      <div class="form-group" style="margin-top:3px">
+        <label class="control-label mr-sm-2" style="font-size:70%">Medições a cada:</label>
+        <select class="browser-default custom-select" style="font-size:70%" id="comboMeasurementsInterval" name="comboMeasurementsInterval">
+          <option value="" selected disabled hidden>{{ interval_minutes }}</option>
+          {% if 5 in step_minutes_options %}
+            <option value="5">5min</option>
+          {% endif %}
+          {% if 30 in step_minutes_options %}
+            <option value="30">30min</option>
+          {% endif %}
+          {% if 60 in step_minutes_options %}
+            <option value="60">1h</option>
+          {% endif %}
+          {% if 120 in step_minutes_options %}
+            <option value="120">2h</option>
+          {% endif %}
+          {% if 180 in step_minutes_options %}
+            <option value="180">3h</option>
+          {% endif %}
+          {% if 240 in step_minutes_options %}
+            <option value="240">4h</option>
+          {% endif %}
+          {% if 300 in step_minutes_options %}
+            <option value="300">5h</option>
+          {% endif %}
+          {% if 360 in step_minutes_options %}
+            <option value="360">6h</option>
+          {% endif %}
+          {% if 720 in step_minutes_options %}
+            <option value="720">12h</option>
+          {% endif %}
+          {% if 1440 in step_minutes_options %}
+            <option value="1440">24h</option>
+          {% endif %}
+        </select>
+      </div>
+      <div class="form-group" style="margin-top:3px">
+        <input type="submit" class="btn btn-secondary mb-2" style="font-size:70%" value="Atualizar" />
+      </div>
+    </form>
+  </ul>
+</nav>
+<!-- Barra de pesquisa -->
+<nav class="navbar navbar-shadow col-md-2 d-none d-md-block bg-light" style="position:fixed;margin-top:250px;padding:0" id="navSearch">
+  <form class="navbar-form navbar-left">
+    <div class="input-gro up">
+      <input type="search" class="form-control" placeholder="Pesquisar..." oninput="filterContent()" id="inputSearch">
+      <!--
+      <div class="input-group-btn">
+        <button class="btn btn-secondary" type="button" onclick="filterContent()" id="butSearch">
+          <i class="fas fa-search"></i>
+        </button>
+      </div>
+      -->
+    </div>
+  </form>
+</nav>
+<!-- Barra de navegação -->
+<nav class="navbar navbar-shadow col-md-2 d-none d-md-block bg-light" style="height:78%;position:fixed;margin-top:295px;overflow:auto" id="navMenu">
+  <ul class="nav navbar-nav">
+    <li class="dropdown show">
+      <!-- Lista de instalações -->
+      <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">Instalações</a>
+      <div class="dropdown-menu show bg-light" style="border-style:none">
+        {% for installation_meter in installations_meters %}
+        <a class="dropdown-item" style="font-size:85%" href="{% url 'argos:whitetariff' installation_meter.meter.mac %}">{{ installation_meter.installation.code }} ({{ installation_meter.meter.desc }})</a>
+        {% endfor %}
+      </div>
+    </li>
+    <li class="dropdown show">
+      <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">Medidores</a>
+      <div class="dropdown-menu show bg-light" style="border-style:none">
+        {% for meter in meters_list %}
+        <a class="dropdown-item" style="font-size:85%" href="{% url 'argos:whitetariff' meter.mac %}">{{ meter.desc }}</a>
+        {% endfor %}
+      </div>
+    </li>
+  </ul>
+</nav>
