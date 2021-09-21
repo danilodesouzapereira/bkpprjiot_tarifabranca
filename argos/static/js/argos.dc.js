@@ -1402,8 +1402,8 @@ function dcChartConsumptionDaily (valuesJson, dcChartName) {
   //proteção contra objetos com menos de 2 registros
   if (valuesJson.length < 2) return;
   //determina valores máximo e minimo da dimensão
-  var maxKWH = valuesJson.reduce(function(max, d) { return (d.highlight_peak > max) ? d.highlight_peak : max; }, 0);
-  var minKWH = 0;
+  var maxKW = valuesJson.reduce(function(max, d) { return (d.highlight_peak > max) ? d.highlight_peak : max; }, 0);
+  var minKW = 0;
 
   //cria instância do crossfilter
   var ndx = crossfilter(valuesJson);
@@ -1413,7 +1413,7 @@ function dcChartConsumptionDaily (valuesJson, dcChartName) {
   //define os grupos de consumo
   var highlightintermediateGroup = timeDim.group().reduceSum(function(d) {return d.highlight_interm;}),
       highlightpeakGroup = timeDim.group().reduceSum(function(d) {return d.highlight_peak;}),
-      kwhdailyGroup = timeDim.group().reduceSum(function(d) {return d.kwh_tot;});
+      kwdailyGroup = timeDim.group().reduceSum(function(d) {return d.kw_tot;});
 
   //Função para habilitar/desabilitar os itens da legenda. Se o respectivo gráfico
   //está desabilitado, o item da legenda fica opaco.
@@ -1444,16 +1444,16 @@ function dcChartConsumptionDaily (valuesJson, dcChartName) {
   var x_units = 1.3;
 
   //montagem do gráfico composto
-  var barChartHighlightInterm, barChartHighlightPeak, lineChartKWHdaily;
+  var barChartHighlightInterm, barChartHighlightPeak, lineChartKWdaily;
   var dcChart = dc.compositeChart(dcChartName);
     dcChart
     .transitionDuration(200)
     .margins({top: 5, right: 80, bottom: 25, left: 50})
     .x(d3.scaleLinear().domain([minHour, maxHour]))
     .xUnits(function(){return x_units;})
-    .y(d3.scaleLinear().domain([minKWH, 1.05*maxKWH]))
+    .y(d3.scaleLinear().domain([minKW, 1.05*maxKW]))
     .brushOn(false)
-    .yAxisLabel('Consumo [kWh]', 16)
+    .yAxisLabel('Consumo [kW]', 16)
     .dimension(timeDim)
     .renderHorizontalGridLines(true)
     .compose([
@@ -1469,7 +1469,7 @@ function dcChartConsumptionDaily (valuesJson, dcChartName) {
                 return d.value;
             })
             ,
-            lineChartKWHdaily = new dc.lineChart(dcChart).colors('blue').group(kwhdailyGroup, 'Consumo').title(function (d) {
+            lineChartKWdaily = new dc.lineChart(dcChart).colors('blue').group(kwdailyGroup, 'Consumo').title(function (d) {
                 return "Bar key: " + d.key + "\nBar value: " + d.value;
             }).valueAccessor(function (d) {
                 return d.value;
@@ -1514,8 +1514,8 @@ function dcChartTypicalConsumption (valuesJson, dcChartName) {
   //proteção contra objetos com menos de 2 registros
   if (valuesJson.length < 2) return;
   //determina valores máximo e minimo da dimensão
-  var maxKWH = valuesJson.reduce(function(max, d) { return (d.highlight_peak > max) ? d.highlight_peak : max; }, 0);
-  var minKWH = 0;
+  var maxKW = valuesJson.reduce(function(max, d) { return (d.highlight_peak > max) ? d.highlight_peak : max; }, 0);
+  var minKW = 0;
 
   //cria instância do crossfilter
   var ndx = crossfilter(valuesJson);
@@ -1525,7 +1525,7 @@ function dcChartTypicalConsumption (valuesJson, dcChartName) {
   //define os grupos de consumo
   var highlightintermediateGroup = timeDim.group().reduceSum(function(d) {return d.highlight_interm;}),
       highlightpeakGroup = timeDim.group().reduceSum(function(d) {return d.highlight_peak;}),
-      kwhdailyGroup = timeDim.group().reduceSum(function(d) {return d.kwh_tot;});
+      kwdailyGroup = timeDim.group().reduceSum(function(d) {return d.kw_tot;});
 
   //Função para habilitar/desabilitar os itens da legenda. Se o respectivo gráfico
   //está desabilitado, o item da legenda fica opaco.
@@ -1556,16 +1556,16 @@ function dcChartTypicalConsumption (valuesJson, dcChartName) {
   var x_units = 1.3;
 
   //montagem do gráfico composto
-  var barChartHighlightInterm, barChartHighlightPeak, lineChartKWHdaily;
+  var barChartHighlightInterm, barChartHighlightPeak, lineChartKWdaily;
   var dcChart = dc.compositeChart(dcChartName);
     dcChart
     .transitionDuration(200)
     .margins({top: 5, right: 80, bottom: 25, left: 50})
     .x(d3.scaleLinear().domain([minHour, maxHour]))
     .xUnits(function(){return x_units;})
-    .y(d3.scaleLinear().domain([minKWH, 1.05*maxKWH]))
+    .y(d3.scaleLinear().domain([minKW, 1.05*maxKW]))
     .brushOn(false)
-    .yAxisLabel('Consumo [kWh]', 16)
+    .yAxisLabel('Consumo [kW]', 16)
     .dimension(timeDim)
     .renderHorizontalGridLines(true)
     .compose([
@@ -1581,7 +1581,7 @@ function dcChartTypicalConsumption (valuesJson, dcChartName) {
                 return d.value;
             })
             ,
-            lineChartKWHdaily = new dc.lineChart(dcChart).colors('blue').group(kwhdailyGroup, 'Consumo').title(function (d) {
+            lineChartKWdaily = new dc.lineChart(dcChart).colors('blue').group(kwdailyGroup, 'Consumo').title(function (d) {
                 return "Bar key: " + d.key + "\nBar value: " + d.value;
             }).valueAccessor(function (d) {
                 return d.value;
@@ -1619,4 +1619,368 @@ function dcChartTypicalConsumption (valuesJson, dcChartName) {
   }
   //render the chart again after onresize event
   document.getElementsByTagName('BODY')[0].onresize = function() {renderChartTariffs();};
+}
+
+// função para montagem das tabelas e dos gráficos para comparação tarifa branca x convencional (sem bandeiras)
+function dcChartTableComparison1(valuesJson_white, valuesJson_coventional, valuesJson_comparison_kwh, dcTableName1, dcTableName2, dcChart)
+{
+  //cria crossfilter e dimensão para tabela 1
+  var ndx1 = crossfilter(valuesJson_white);
+  var dim_table1 = ndx1.dimension(function(d) {return d;});
+
+  //cria crossfilter e dimensão para tabela 2
+  var ndx2 = crossfilter(valuesJson_coventional);
+  var dim_table2 = ndx2.dimension(function(d) {return d;});
+
+  //cria crossfilter e dimensão para gráfico de consumos totais
+  var ndx3 = crossfilter(valuesJson_comparison_kwh);
+  var dim_chart = ndx3.dimension(function(d) {return d.period;});
+  var kwhGroup = dim_chart.group().reduceSum(function(d) {return d.value;});
+
+  //cria tabelas
+  var dcTable1 = dc.dataTable(dcTableName1);
+  var dcTable2 = dc.dataTable(dcTableName2);
+
+  //define tabela2
+  dcTable1
+    .dimension(dim_table1)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
+  dcTable2
+    .dimension(dim_table2)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
+
+  //define as colunas que as tabelas devem exibir
+  dcTable1
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return formatNumber(d.kwh);},
+      function(d) {return formatNumber(d.tariff);},
+      function(d) {return formatNumber(d.cost_energy);},
+      function(d) {return formatNumber(d.icms);},
+      function(d) {return formatNumber(d.cost_icms);},
+      function(d) {return formatNumber(d.total);}
+    ]);
+  dcTable2
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return formatNumber(d.kwh);},
+      function(d) {return formatNumber(d.tariff);},
+      function(d) {return formatNumber(d.cost_energy);},
+      function(d) {return formatNumber(d.icms);},
+      function(d) {return formatNumber(d.cost_icms);},
+      function(d) {return formatNumber(d.total);}
+    ]);
+
+  var chartKWH = new dc.pieChart(dcChart);
+  chartKWH
+    .width(450)
+    .height(250)
+    .slicesCap(4)
+    .innerRadius(10)
+    .radius(100)
+    .dimension(dim_chart)
+    .group(kwhGroup)
+    .legend(dc.legend().x(0).y(20));
+
+    chartKWH.on('pretransition', function(chart) {
+      chart.selectAll('.dc-legend-item text')
+          .text('')
+        .append('tspan')
+          .text(function(d) { return d.name; })
+        .append('tspan')
+          .attr('x', 100)
+          .attr('text-anchor', 'end')
+          .append('tspan')
+          .text(function(d) { return d.data; })});
+
+//  chartKWH.colors(d3.scaleOrdinal().range(['red','green','blue']));
+
+  chartKWH.render();
+
+  //render chart and table
+  renderChartTable();
+
+  //function to render chart and table
+  function renderChartTable() {
+    dc.renderAll();
+  }
+  //render the chart again after onresize event
+  document.getElementsByTagName('BODY')[0].onresize = function() {renderChartTable();};
+}
+
+// função para montagem das tabelas e dos gráficos para comparação tarifa branca x convencional (com bandeiras)
+function dcChartTableComparison2(valuesJson_white, valuesJson_conv, dcTableName1, dcTableName2, dcTableName3, dcTableName4, dcTableName5, dcTableName6, dcTableName7, dcTableName8)
+{
+  //cria crossfilter e dimensão para dados de tarifa branca
+  var ndx1 = crossfilter(valuesJson_white);
+  var dim_white = ndx1.dimension(function(d) {return d;});
+
+  //cria crossfilter e dimensão para dados de tarifa convencional
+  var ndx2 = crossfilter(valuesJson_conv);
+  var dim_conv = ndx2.dimension(function(d) {return d;});
+
+  //cria tabelas
+  var dcTable1 = dc.dataTable(dcTableName1);
+  var dcTable2 = dc.dataTable(dcTableName2);
+  var dcTable3 = dc.dataTable(dcTableName3);
+  var dcTable4 = dc.dataTable(dcTableName4);
+  var dcTable5 = dc.dataTable(dcTableName5);
+  var dcTable6 = dc.dataTable(dcTableName6);
+  var dcTable7 = dc.dataTable(dcTableName7);
+  var dcTable8 = dc.dataTable(dcTableName8);
+
+  //define tabela2
+  dcTable1
+    .dimension(dim_white)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
+  dcTable2
+    .dimension(dim_conv)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
+  dcTable3
+    .dimension(dim_white)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
+  dcTable4
+    .dimension(dim_conv)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
+  dcTable5
+    .dimension(dim_white)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
+  dcTable6
+    .dimension(dim_conv)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
+  dcTable7
+    .dimension(dim_white)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
+  dcTable8
+    .dimension(dim_conv)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
+
+  //define as colunas das tabelas (branca e convencional) para bandeira verde
+  dcTable1
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return d.total_green;}
+    ]);
+  dcTable2
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return d.total_green;}
+    ]);
+  dcTable3
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return d.total_yellow;}
+    ]);
+  dcTable4
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return d.total_yellow;}
+    ]);
+  dcTable5
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return d.total_red1;}
+    ]);
+  dcTable6
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return d.total_red1;}
+    ]);
+  dcTable7
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return d.total_red2;}
+    ]);
+  dcTable8
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return d.total_red2;}
+    ]);
+
+  //render chart and table
+  renderChartTable();
+
+  //function to render chart and table
+  function renderChartTable() {
+    dc.renderAll();
+  }
+  //render the chart again after onresize event
+  document.getElementsByTagName('BODY')[0].onresize = function() {renderChartTable();};
+}
+
+// função para preencher gráficos de barras comparando tarifa convencional x branca
+function dcChartTableComparison2_barCharts(valuesJson, dcChartName1, dcChartName2, dcChartName3, dcChartName4)
+{
+  //cria crossfilter e dimensão para dados de tarifa branca
+  var ndx = crossfilter(valuesJson);
+  var tariffDim = ndx.dimension(function(d) {return d.tariff;});
+
+  //define os grupos (o que vai no eixo y)
+  var greenGroup = tariffDim.group().reduceSum(function(d) {return d.cost_green;});
+  var yellowGroup = tariffDim.group().reduceSum(function(d) {return d.cost_yellow;});
+  var red1Group = tariffDim.group().reduceSum(function(d) {return d.cost_red1;});
+  var red2Group = tariffDim.group().reduceSum(function(d) {return d.cost_red2;});
+
+  //define valores máximos
+  var maxGreen = valuesJson.reduce(function(max, d) { return (d.cost_green > max) ? d.cost_green : max; }, 0);
+  var maxYellow = valuesJson.reduce(function(max, d) { return (d.cost_yellow > max) ? d.cost_yellow : max; }, 0);
+  var maxRed1 = valuesJson.reduce(function(max, d) { return (d.cost_red1 > max) ? d.cost_red1 : max; }, 0);
+  var maxRed2 = valuesJson.reduce(function(max, d) { return (d.cost_red2 > max) ? d.cost_red2 : max; }, 0);
+  var maxValue = maxGreen;
+  if(maxYellow > maxValue) {maxValue = maxYellow;}
+  if(maxRed1 > maxValue) {maxValue = maxRed1;}
+  if(maxRed2 > maxValue) {maxValue = maxRed2;}
+
+  var dcChartGreen = dc.barChart(dcChartName1);
+  var dcChartYellow = dc.barChart(dcChartName2);
+  var dcChartRed1 = dc.barChart(dcChartName3);
+  var dcChartRed2 = dc.barChart(dcChartName4);
+  dcChartGreen
+    .width(250)
+    .height(200)
+    .colors('green')
+    .x(d3.scaleBand())
+    .y(d3.scaleLinear().domain([0.0, 1.2 * maxValue]))
+    .xUnits(dc.units.ordinal)
+    .yAxisLabel('Custo [R$]', 15)
+    .brushOn(false)
+    .barPadding(0.5)
+    .dimension(tariffDim)
+    .group(greenGroup)
+    .renderLabel(true)
+    .on('pretransition', function(chart) {
+        chart.select('.axis.x')
+             .attr("text-anchor", "end")
+             .selectAll("text")
+             .attr("transform", "rotate(-45)")
+             .attr("dy", "-0.7em")
+             .attr("dx", "-1em");
+        });
+
+  dcChartYellow
+    .width(250)
+    .height(200)
+    .colors('yellow')
+    .x(d3.scaleBand())
+    .y(d3.scaleLinear().domain([0.0, 1.2 * maxValue]))
+    .xUnits(dc.units.ordinal)
+    .yAxisLabel('Custo [R$]', 15)
+    .brushOn(false)
+    .barPadding(0.5)
+    .dimension(tariffDim)
+    .group(yellowGroup)
+    .renderLabel(true)
+    .on('pretransition', function(chart) {
+        chart.select('.axis.x')
+             .attr("text-anchor", "end")
+             .selectAll("text")
+             .attr("transform", "rotate(-45)")
+             .attr("dy", "-0.7em")
+             .attr("dx", "-1em");
+        });
+
+  dcChartRed1
+    .width(250)
+    .height(200)
+    .colors('red')
+    .x(d3.scaleBand())
+    .y(d3.scaleLinear().domain([0.0, 1.2 * maxValue]))
+    .xUnits(dc.units.ordinal)
+    .yAxisLabel('Custo [R$]', 15)
+    .brushOn(false)
+    .barPadding(0.5)
+    .dimension(tariffDim)
+    .group(red1Group)
+    .renderLabel(true)
+    .on('pretransition', function(chart) {
+        chart.select('.axis.x')
+             .attr("text-anchor", "end")
+             .selectAll("text")
+             .attr("transform", "rotate(-45)")
+             .attr("dy", "-0.7em")
+             .attr("dx", "-1em");
+        });
+
+  dcChartRed2
+    .width(250)
+    .height(200)
+    .colors('red')
+    .x(d3.scaleBand())
+    .y(d3.scaleLinear().domain([0.0, 1.2 * maxValue]))
+    .xUnits(dc.units.ordinal)
+    .yAxisLabel('Custo [R$]', 15)
+    .brushOn(false)
+    .barPadding(0.5)
+    .dimension(tariffDim)
+    .group(red2Group)
+    .renderLabel(true)
+    .on('pretransition', function(chart) {
+        chart.select('.axis.x')
+             .attr("text-anchor", "end")
+             .selectAll("text")
+             .attr("transform", "rotate(-45)")
+             .attr("dy", "-0.7em")
+             .attr("dx", "-1em");
+        });
+
+  //renderiza gráficos
+  dcChartGreen.render(); dcChartYellow.render(); dcChartRed1.render(); dcChartRed2.render();
+
+  renderCharts();
+  function renderCharts()
+  {
+    //altura, largura e razão largura/altura
+    var height, width, ratio = 2;
+    //define propriedades dos gráficos
+    width = Math.round(document.getElementById('myChart5').clientWidth);
+    height = Math.round(width / ratio);
+
+    dcChartGreen.yAxis().tickFormat(function(v) { return ""; });
+    dcChartGreen.yAxis().ticks(0);
+    dcChartYellow.yAxis().tickFormat(function(v) { return ""; });
+    dcChartYellow.yAxis().ticks(0);
+    dcChartRed1.yAxis().tickFormat(function(v) { return ""; });
+    dcChartRed1.yAxis().ticks(0);
+    dcChartRed2.yAxis().tickFormat(function(v) { return ""; });
+    dcChartRed2.yAxis().ticks(0);
+
+    dcChartGreen.margins().left = 20;
+    dcChartGreen.margins().right = 60;
+    dcChartGreen.margins().bottom = 70;
+    dcChartYellow.margins().left = 20;
+    dcChartYellow.margins().right = 60;
+    dcChartYellow.margins().bottom = 70;
+    dcChartRed1.margins().left = 20;
+    dcChartRed1.margins().right = 60;
+    dcChartRed1.margins().bottom = 70;
+    dcChartRed2.margins().left = 20;
+    dcChartRed2.margins().right = 60;
+    dcChartRed2.margins().bottom = 70;
+
+    //dcChartGreen.width(100);
+    //dcChartGreen.height(50);
+    dc.renderAll();
+  }
+  //render the chart again after onresize event
+  document.getElementsByTagName('BODY')[0].onresize = function() {renderCharts();};
 }

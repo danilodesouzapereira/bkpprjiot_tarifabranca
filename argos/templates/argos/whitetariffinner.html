@@ -35,6 +35,12 @@
 						<li class="nav-item">
 							<a class="nav-link" data-toggle="tab" href="#chart3">Consumo típico</a>
 						</li>
+						<li class="nav-item">
+							<a class="nav-link" data-toggle="tab" href="#table1">Comparação tarifas branca x tradicional</a>
+						</li>
+						<li class="nav-item">
+							<a class="nav-link" data-toggle="tab" href="#table2">Comparação com bandeiras tarifárias</a>
+						</li>
 					</ul>
 
 					<!-- 1.2 Gráficos das diferentes abas dos gráficos de tarifa branca -->
@@ -138,6 +144,189 @@
 								<div class="container" id="myChart3"></div>
 							</div>
 						</div>
+						<!-- 1.2.4 Comparação tarifa branca x tarifa tradicional -->
+						<div class="container tab-pane fade" id="table1">
+						  <div class="table-responsive">
+							<table class="table table-striped table-sm" id="myTable1" style="font-size:75%">
+							  <thead>
+								<tr>
+								  <th scope="col">Descrição</th>
+								  <th scope="col">Consumo [kWh]</th>
+								  <th scope="col">Tarifa [R$/kWh]</th>
+								  <th scope="col">Valor energia</th>
+								  <th scope="col">ICMS [%]</th>
+								  <th scope="col">Valor ICMS</th>
+								  <th scope="col">Total</th>
+								</tr>
+							  </thead>
+							</table>
+						  </div>
+						  <div class="table-responsive">
+							<table class="table table-striped table-sm" id="myTable2" style="font-size:75%">
+							  <thead>
+								<tr>
+								  <th scope="col">Descrição</th>
+								  <th scope="col">Consumo [kWh]</th>
+								  <th scope="col">Tarifa [R$/kWh]</th>
+								  <th scope="col">Valor energia</th>
+								  <th scope="col">ICMS [%]</th>
+								  <th scope="col">Valor ICMS</th>
+								  <th scope="col">Total</th>
+								</tr>
+							  </thead>
+							</table>
+						  </div>
+						  <div class="row">
+					  		<div class="col-sm-5" style="text-align:center">
+								<div class="row"><div class="col" style="text-align:center;font-size:120%">Consumo (kWh)</div></div>
+								<div class="container" id="myChart4">
+								</div>
+							</div>
+						  	<div class="col-sm-7">
+								<div class="alert alert-secondary" role="alert" style="text-align:center;font-size:120%">Resultados da comparação</div>
+								<div class="row" style="text-align:center">
+									<div class="col-sm-6" style="text-align:center">
+										<div class="row"><div class="col" style="text-align:center;font-size:170%">R$ {{ json_results_comparison.tot_white }}</div></div>
+										<div class="row"><div class="col" style="text-align:center;font-size:75%">Total branca</div></div>
+									</div>
+									<div class="col-sm-6" style="text-align:center">
+										<div class="row"><div class="col" style="text-align:center;font-size:170%">R$ {{ json_results_comparison.tot_conv }}</div></div>
+										<div class="row"><div class="col" style="text-align:center;font-size:75%">Total convencional</div></div>
+									</div>
+								</div>
+								<div class="row">
+									<div class="col" style="text-align:center">
+										<div class="row"><div class="col" style="text-align:center;font-size:170%;font-weight:bold">R$ {{ json_results_comparison.diff }}</div></div>
+										<div class="row"><div class="col" style="text-align:center;font-size:75%">Diferença (convencional - branca)</div></div>
+									</div>
+								</div>
+							</div>
+						  </div>
+						</div>
+						<!-- 1.2.5 Comparação tarifas com bandeiras tarifárias -->
+						<div class="container tab-pane fade" id="table2">
+							<!-- <div class="row"><div class="col" style="text-align:center;font-size:120%">Bandeiras tarifárias</div></div> -->
+							<div class="row" style="margin-top:10px;margin-bottom:10px">
+								<!-- Coluna da bandeira Verde -->
+								<div class="col-sm-3" style="height:240px">
+									<div class="row align-items-center" style="margin-left:1mm;margin-right:1mm;background-color:#006400;text-align:center;color:#FFFFFF;font-size:75%;font-weight:bold;height:25px;vertical-align:middle">
+										<div class="col" style="text-align:center">Bandeira Verde</div>
+									</div>
+									<div class="table-responsive" style="margin-top:10px">
+										<table class="table table-striped table-sm" id="myTable3" style="font-size:70%">
+											<thead>
+												<tr>
+													<th scope="col">Item</th>
+													<th scope="col">Total</th>
+												</tr>
+											</thead>
+										</table>
+									</div>
+									<div class="table-responsive">
+										<table class="table table-striped table-sm" id="myTable4" style="font-size:70%">
+											<thead>
+												<tr>
+													<th scope="col">Item</th>
+													<th scope="col">Total</th>
+												</tr>
+											</thead>
+										</table>
+									</div>
+								</div>
+								<!-- Coluna da bandeira Amarela -->
+								<div class="col-sm-3" style="border-left:solid 4px #DCDCDC;height:240px">
+									<div class="row align-items-center" style="margin-left:1mm;margin-right:1mm;background-color:#FFFF33;text-align:center;color:#000000;font-size:75%;font-weight:bold;height:25px">
+										<div class="col" style="text-align:center">Bandeira Amarela</div>
+									</div>
+									<div class="table-responsive" style="margin-top:10px">
+										<table class="table table-striped table-sm" id="myTable5" style="font-size:70%">
+											<thead>
+												<tr>
+													<th scope="col">Item</th>
+													<th scope="col">Total</th>
+												</tr>
+											</thead>
+										</table>
+									</div>
+									<div class="table-responsive">
+										<table class="table table-striped table-sm" id="myTable6" style="font-size:70%">
+											<thead>
+												<tr>
+													<th scope="col">Item</th>
+													<th scope="col">Total</th>
+												</tr>
+											</thead>
+										</table>
+									</div>
+								</div>
+								<!-- Coluna da bandeira Vermelha I -->
+								<div class="col-sm-3" style="border-left:solid 4px #DCDCDC;height:240px">
+									<div class="row align-items-center" style="margin-left:1mm;margin-right:1mm;background-color:#FF0000;text-align:center;color:#FFFFFF;font-size:75%;font-weight:bold;height:25px">
+										<div class="col" style="text-align:center">Bandeira Vermelha Patamar I</div>
+									</div>
+									<div class="table-responsive" style="margin-top:10px">
+										<table class="table table-striped table-sm" id="myTable7" style="font-size:70%">
+											<thead>
+												<tr>
+													<th scope="col">Item</th>
+													<th scope="col">Total</th>
+												</tr>
+											</thead>
+										</table>
+									</div>
+									<div class="table-responsive">
+										<table class="table table-striped table-sm" id="myTable8" style="font-size:70%">
+											<thead>
+												<tr>
+													<th scope="col">Item</th>
+													<th scope="col">Total</th>
+												</tr>
+											</thead>
+										</table>
+									</div>
+								</div>
+								<!-- Coluna da bandeira Vermelha II -->
+								<div class="col-sm-3" style="border-left:solid 4px #DCDCDC;height:240px">
+									<div class="row align-items-center" style="margin-left:1mm;margin-right:1mm;background-color:#FF0000;text-align:center;color:#FFFFFF;font-size:75%;font-weight:bold;height:25px">
+										<div class="col" style="text-align:center">Bandeira Vermelha Patamar II</div>
+									</div>
+									<div class="table-responsive" style="margin-top:10px">
+										<table class="table table-striped table-sm" id="myTable9" style="font-size:70%">
+											<thead>
+												<tr>
+													<th scope="col">Item</th>
+													<th scope="col">Total</th>
+												</tr>
+											</thead>
+										</table>
+									</div>
+									<div class="table-responsive">
+										<table class="table table-striped table-sm" id="myTable10" style="font-size:70%">
+											<thead>
+												<tr>
+													<th scope="col">Item</th>
+													<th scope="col">Total</th>
+												</tr>
+											</thead>
+										</table>
+									</div>
+								</div>
+							</div>
+							<div class="row" style="margin-top:10px">
+								<div class="col-sm-3">
+									<div class="container" id="myChart5"></div>
+								</div>
+								<div class="col-sm-3">
+									<div class="container" id="myChart6"></div>
+								</div>
+								<div class="col-sm-3">
+									<div class="container" id="myChart7"></div>
+								</div>
+								<div class="col-sm-3">
+									<div class="container" id="myChart8"></div>
+								</div>
+							</div>
+						</div>
 					</div>
 					{% block fixedbottombar %}
 					{% endblock %}
@@ -168,10 +357,19 @@
 
 			//objetos json com dados
 			var valuesJson_tariffs = {{ tariff_profile|safe }};
-			var valuesJson_dailykwh = {{ daily_kwh|safe }};
-			var valuesJson_typicalkwh = {{ typical_kwh|safe }};
+			var valuesJson_dailykw = {{ daily_kw|safe }};
+			var valuesJson_typicalkw = {{ typical_kw|safe }};
 			var valuesJson_daysFilter = {{ json_days_filter|safe }};
 			var valuesJson_seasonsFilter = {{ json_seasons_filter|safe }};
+			var valuesJson_white = {{ json_comparison_white|safe }};
+			var valuesJson_coventional = {{ json_comparison_conventional|safe }};
+			var valuesJson_comparison_kwh = {{ json_results_comparison_kwh|safe }};
+
+			var valuesJson_comparison2_white = {{ json_comparison2_white|safe }};
+			var valuesJson_comparison2_conv = {{ json_comparison2_conventional|safe }};
+			var valuesJson_comparison2_barCharts = {{ json_comparison2_barCharts|safe }};
+
+
 
 			//prepara dados
 			//valuesJson.forEach(function(d) {
@@ -180,8 +378,15 @@
 
 			//preenche e exibe gráficos (ver argos.dc.js)
 			dcChartTariffs(valuesJson_tariffs, "#myChart1");
-			dcChartConsumptionDaily(valuesJson_dailykwh, "#myChart2");
-			dcChartTypicalConsumption(valuesJson_typicalkwh, "#myChart3");
+			dcChartConsumptionDaily(valuesJson_dailykw, "#myChart2");
+			dcChartTypicalConsumption(valuesJson_typicalkw, "#myChart3");
+
+			//preenche tabelas (e gráficos) da comparação tarifa branca x convencional (sem bandeiras)
+			dcChartTableComparison1(valuesJson_white, valuesJson_coventional, valuesJson_comparison_kwh, "#myTable1", "#myTable2", "#myChart4");
+
+			//preenche tabelas (e gráficos) da comparação tarifa branca x convencional (com bandeiras)
+			dcChartTableComparison2(valuesJson_comparison2_white, valuesJson_comparison2_conv, "#myTable3", "#myTable4", "#myTable5", "#myTable6", "#myTable7", "#myTable8", "#myTable9", "#myTable10");
+			dcChartTableComparison2_barCharts(valuesJson_comparison2_barCharts, "#myChart5", "#myChart6", "#myChart7", "#myChart8");
 
 			getSetScrollTop();
 			//setFilterOnChange();

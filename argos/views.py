@@ -342,14 +342,26 @@ def whitetariff(request, mac):
     """
     # Geração dos dados (tensões, correntes, potências ativas e reativas)
     data_list = []
-    pf = 0.9  # fator de potência considerado
+    pf = 0.92  # fator de potência considerado
+    loadshape_weekday = [0.594, 0.534, 0.504, 0.475, 0.475, 0.534, 0.534, 0.95, 1.366, 1.514, 1.425, 1.247, 1.009, 1.425, 1.485, 1.425, 1.425, 1.128, 1.069, 1.247, 1.069, 1.009, 0.831, 0.712]
+    loadshape_saturday = [0.775, 0.732, 0.689, 0.646, 0.775, 0.732, 0.775, 0.99, 1.249, 1.335, 1.421, 1.249, 1.162, 1.033, 1.033, 0.99, 1.016, 1.042, 1.197, 1.162, 1.076, 0.947, 0.99, 0.973]
+    loadshape_sunday = [0.942, 0.986, 0.942, 0.897, 0.807, 0.807, 0.807, 0.986, 1.076, 1.076, 1.031, 0.986, 0.942, 0.942, 0.888, 0.897, 0.897, 1.058, 1.256, 1.256, 1.238, 1.166, 1.031, 1.076]
     for i in range(num_meas):
         datetime_rx = datetime_fin_max + timedelta(minutes=-meas_interval_minutes * i)
         if datetime_rx < datetime_ini_min:
             break
         volts = np.random.normal(127.0, 3.0, 3)  # vetor de 3 tensões aleatórias
         va, vb, vc = round(float(volts[0]), 2), round(float(volts[1]), 2), round(float(volts[2]), 2)
-        amps = np.random.normal(20.0, 1.0, 4)  # vetor de 4 correntes aleatórias
+
+        # corrente média x curva típica (pu da média)
+        if datetime_rx.weekday() == 5:
+            i_rated = 25 * loadshape_saturday[datetime_rx.hour]
+        elif datetime_rx.weekday() == 6:
+            i_rated = 25 * loadshape_sunday[datetime_rx.hour]
+        else:
+            i_rated = 25 * loadshape_weekday[datetime_rx.hour]
+
+        amps = np.random.normal(i_rated, 1.0, 4)  # vetor de 4 correntes aleatórias
         ia, ib, ic, id = round(float(amps[0]), 2), round(float(amps[1]), 2), round(float(amps[2]), 2), round(
             float(amps[3]), 2)
 
@@ -551,6 +563,71 @@ def whitetariff(request, mac):
     for i in range(22, 23):
         typical_consumption[i][2] = highlight_kwh
 
+    """
+    Dados relativos à comparação de tarifas (sem bandeiras)
+    """
+    # tarifa branca
+    data_list_comp1_white = []
+    data_list_comp1_white.append(['FORA PONTA', 104.09, 0.44, 45.45, 12.00, 6.20, 51.65])
+    data_list_comp1_white.append(['INTERMEDIARIO', 6.56, 0.62, 4.05, 12.00, 0.55, 4.60])
+    data_list_comp1_white.append(['PONTA', 11.79, 0.96, 11.32, 12.00, 1.54, 12.87])
+    # tarifa convencional
+    data_list_comp1_conv = [['CONVENCIONAL', 122.56, 0.52, 63.19, 12.00, 8.62, 71.81]]
+
+    # calcula resultados (total branca, total convencional e diferença)
+    total_white = round(data_list_comp1_white[0][6] + data_list_comp1_white[1][6] + data_list_comp1_white[2][6], 2)
+    total_conventional = round(data_list_comp1_conv[0][6], 2)
+    total_difference = round(total_conventional - total_white, 2)
+
+    # consumos (kWh) totais por patamar horário
+    # 104.09, 11.79, 6.56 = 122,44
+    kwh_offpeak = 104.09
+    kwh_peak = 11.79
+    kwh_interm = 6.56
+    data_list_pie_kwh = []
+    data_list_pie_kwh.append(['Fora ponta', kwh_offpeak])
+    data_list_pie_kwh.append(['Intermediário', kwh_interm])
+    data_list_pie_kwh.append(['Ponta', kwh_peak])
+
+    """
+    Dados relativos à comparação de tarifas (com bandeiras)
+    """
+    # comparação 2 - tarifa branca - bandeira verde
+    data_list_comp2_white_green = []
+    data_list_comp2_white_green.append(['FORA PONTA', 104.09, 0.44, 45.45, 12.00, 6.20, 51.65])
+    data_list_comp2_white_green.append(['INTERMEDIÁRIO', 6.56, 0.62, 4.05, 12.00, 0.55, 4.60])
+    data_list_comp2_white_green.append(['PONTA', 11.79, 0.96, 11.32, 12.00, 1.54, 12.87])
+    data_list_comp2_white_green.append(['TOTAL', 0, 0, 0, 0, 0, 69.12])
+    # comparação 2 - tarifa convencional - bandeira verde
+    data_list_comp2_conv_green = [['CONVENCIONAL', 122.56, 0.52, 63.19, 12.00, 8.62, 71.81]]
+
+    # comparação 2 - tarifa branca - bandeira amarela
+    data_list_comp2_white_yellow = []
+    data_list_comp2_white_yellow.append(['FORA PONTA', 104.09, 0.44, 45.45, 12.00, 6.20, 53.23])
+    data_list_comp2_white_yellow.append(['INTERMEDIÁRIO', 6.56, 0.62, 4.05, 12.00, 0.55, 4.70])
+    data_list_comp2_white_yellow.append(['PONTA', 11.79, 0.96, 11.32, 12.00, 1.54, 13.05])
+    data_list_comp2_white_yellow.append(['TOTAL', 0, 0, 0, 0, 0, 70.98])
+    # comparação 2 - tarifa convencional - bandeira amarela
+    data_list_comp2_conv_yellow = [['CONVENCIONAL', 122.56, 0.52, 63.19, 12.00, 8.62, 73.68]]
+
+    # comparação 2 - tarifa branca - bandeira vemelha I
+    data_list_comp2_white_red1 = []
+    data_list_comp2_white_red1.append(['FORA PONTA', 104.09, 0.44, 45.45, 12.00, 6.20, 56.58])
+    data_list_comp2_white_red1.append(['INTERMEDIÁRIO', 6.56, 0.62, 4.05, 12.00, 0.55, 4.92])
+    data_list_comp2_white_red1.append(['PONTA', 11.79, 0.96, 11.32, 12.00, 1.54, 13.42])
+    data_list_comp2_white_red1.append(['TOTAL', 0, 0, 0, 0, 0, 74.92])
+    # comparação 2 - tarifa convencional - bandeira vemelha I
+    data_list_comp2_conv_red1 = [['CONVENCIONAL', 122.56, 0.52, 63.19, 12.00, 8.62, 77.61]]
+
+    # comparação 2 - tarifa branca - bandeira vemelha II
+    data_list_comp2_white_red2 = []
+    data_list_comp2_white_red2.append(['FORA PONTA', 104.09, 0.44, 45.45, 12.00, 6.20, 59.03])
+    data_list_comp2_white_red2.append(['INTERMEDIÁRIO', 6.56, 0.62, 4.05, 12.00, 0.55, 5.07])
+    data_list_comp2_white_red2.append(['PONTA', 11.79, 0.96, 11.32, 12.00, 1.54, 13.70])
+    data_list_comp2_white_red2.append(['TOTAL', 0, 0, 0, 0, 0, 77.80])
+    # comparação 2 - tarifa convencional - bandeira vemelha II
+    data_list_comp2_conv_red2 = [['CONVENCIONAL', 122.56, 0.52, 63.19, 12.00, 8.62, 80.50]]
+
 
 
     """
@@ -560,10 +637,10 @@ def whitetariff(request, mac):
     tariff_profile = [{'t': val[0], 'white_offpeak': val[1], 'white_intermediate': val[2], 'white_peak': val[3], 'conventional': val[4]} for val in data_list_tariffs]
 
     # curva de consumo horários de um determinado dia
-    daily_kwh = [{'t': val[0], 'kwh_tot': val[1], 'highlight_interm': val[2],'highlight_peak': val[3]} for val in consumption_daily]
+    daily_kw = [{'t': val[0], 'kw_tot': val[1], 'highlight_interm': val[2],'highlight_peak': val[3]} for val in consumption_daily]
 
     # curva típica de consumo
-    typical_kwh = [{'t': val[0], 'kwh_tot': val[1], 'highlight_interm': val[2],'highlight_peak': val[3]} for val in typical_consumption]
+    typical_kw = [{'t': val[0], 'kw_tot': val[1], 'highlight_interm': val[2],'highlight_peak': val[3]} for val in typical_consumption]
 
 
     # dias da semana a serem marcados/desmarcados
@@ -583,6 +660,59 @@ def whitetariff(request, mac):
     ckSpring = 1 if 4 in seasons_consider else 0
     json_seasons_filter = {'ckSummer': ckSummer, 'ckFall': ckFall, 'ckWinter': ckWinter, 'ckSpring': ckSpring}
 
+    # dados relativos à comparação de tarifas (aba Comparação de tarifas sem bandeiras)
+    json_comparison_white = [{'description': v[0], 'kwh': v[1], 'tariff': v[2], 'cost_energy': v[3],
+                             'icms': v[4], 'cost_icms': v[5], 'total': v[6]} for v in data_list_comp1_white]
+    json_comparison_conventional = [{'description': v[0], 'kwh': v[1], 'tariff': v[2], 'cost_energy': v[3],
+                                     'icms': v[4], 'cost_icms': v[5], 'total': v[6]} for v in data_list_comp1_conv]
+    # resumo
+    json_results_comparison = {'tot_white': total_white, 'tot_conv': total_conventional, 'diff': total_difference}
+    # gráfico de pizza
+    json_results_comparison_kwh = [{'period': v[0], 'value': v[1]} for v in data_list_pie_kwh]
+
+    def currency_format_brazil(value_ini):
+        value = "R$ {:,.2f}".format(value_ini)
+        main_currency, fractional_currency = value.split(".")[0], value.split(".")[1]
+        new_main_currency = main_currency.replace(",", ".")
+        value = new_main_currency + ',' + fractional_currency
+        return value
+
+    # dados relativos à comparação de tarifas (aba Comparação de tarifas com bandeiras)
+    json_comparison2_white = []
+    for i in range(len(data_list_comp2_white_green)):
+        desc = data_list_comp2_white_green[i][0]
+        tot_green = currency_format_brazil(data_list_comp2_white_green[i][6])
+        tot_yellow = currency_format_brazil(data_list_comp2_white_yellow[i][6])
+        tot_red1 = currency_format_brazil(data_list_comp2_white_red1[i][6])
+        tot_red2 = currency_format_brazil(data_list_comp2_white_red2[i][6])
+        json_comparison2_white.append({'description': desc, 'total_green': tot_green, 'total_yellow': tot_yellow,
+                                       'total_red1': tot_red1, 'total_red2': tot_red2})
+    json_comparison2_conventional = []
+    for i in range(len(data_list_comp2_conv_green)):
+        desc = data_list_comp2_conv_green[i][0]
+        tot_green = currency_format_brazil(data_list_comp2_conv_green[i][6])
+        tot_yellow = currency_format_brazil(data_list_comp2_conv_yellow[i][6])
+        tot_red1 = currency_format_brazil(data_list_comp2_conv_red1[i][6])
+        tot_red2 = currency_format_brazil(data_list_comp2_conv_red2[i][6])
+        json_comparison2_conventional.append({'description': desc, 'total_green': tot_green, 'total_yellow': tot_yellow,
+                                              'total_red1': tot_red1, 'total_red2': tot_red2})
+
+
+    # dados para preenchimento de gráficos de barra da comparação 2
+    json_comparison2_barCharts = []
+    green = data_list_comp2_conv_green[0][6]
+    yellow = data_list_comp2_conv_yellow[0][6]
+    red1 = data_list_comp2_conv_red1[0][6]
+    red2 = data_list_comp2_conv_red2[0][6]
+    json_comparison2_barCharts.append({'tariff': 'Convencional', 'cost_green': green, 'cost_yellow': yellow, 'cost_red1': red1, 'cost_red2': red2})
+    green = data_list_comp2_white_green[3][6]
+    yellow = data_list_comp2_white_yellow[3][6]
+    red1 = data_list_comp2_white_red1[3][6]
+    red2 = data_list_comp2_white_red2[3][6]
+    json_comparison2_barCharts.append({'tariff': 'Branca', 'cost_green': green, 'cost_yellow': yellow, 'cost_red1': red1, 'cost_red2': red2})
+
+
+
     """
     Criação das variáveis de contexto para montagem da página HTML
     """
@@ -591,8 +721,15 @@ def whitetariff(request, mac):
         'installations_meters': installations_meters,
         'meter': meter,
         'tariff_profile': tariff_profile,
-        'daily_kwh': daily_kwh,
-        'typical_kwh': typical_kwh,
+        'daily_kw': daily_kw,
+        'typical_kw': typical_kw,
+        'json_comparison_white': json_comparison_white,  # dados da tabela 1 da comparação 1
+        'json_comparison_conventional': json_comparison_conventional,  # dados da tabela 2 da comparação 1
+        'json_results_comparison': json_results_comparison,  # dados de resumo da comparação 1
+        'json_results_comparison_kwh': json_results_comparison_kwh,  # dados do gráfico de pizza da comparação 1
+        'json_comparison2_white': json_comparison2_white,  # totais de tarifa branca da comparação 2
+        'json_comparison2_conventional': json_comparison2_conventional,  # totais de tarifa conv. da comparação 2
+        'json_comparison2_barCharts': json_comparison2_barCharts,
         'json_days_filter': json_days_filter,
         'json_seasons_filter': json_seasons_filter,
         'datetime_kwh_daily': datetime_kwh_daily.strftime('%Y-%m-%d'),
