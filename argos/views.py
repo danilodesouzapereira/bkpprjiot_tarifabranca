@@ -31,6 +31,7 @@ from .models import LoraDeviceType, LoraDevice, LoraPayload, Gateway, Transactio
 from .serializers import RechargePointSerializer, RechargeStationSerializer, UserSerializer
 import numpy as np
 from math import sqrt, ceil
+from .icaro import *
 
 
 def account_activation(request, uidb64, token):
@@ -259,216 +260,27 @@ def whitetarifflist(request):
     return response
 
 
-"""
-Função para cálculo do valor total da fatura com tarifa convencional
-- data_list_energy_proj: lista com os valores de consumo
-- customer_type: tipo/classe do consumidor (B1_1, B1_2, ..., B2_1, B2_2, ...
-"""
-def cost_conventional(data_list_energy_proj, customer_type):
-
-    # DADO EXTERNO - matriz de bandeiras tarifárias, com a seguinte formatação:
-    # bandeira, valor (R$/kWh sem impostos)
-    # 0: verde, 1: amarela, 2: vermelha pat. 1, 3: vermelha pat. 2, 4: escassez hídrica
-    flag_tariffs = [0.0, 0.01874, 0.03971, 0.09492, 0.1420]
-
-    # função para mapear nome da bandeira e valor da bandeira
-    def flag_value(flag_name, flag_tariffs):
-        if flag_name == 'VD': value = flag_tariffs[0]
-        elif flag_name == 'AM': value = flag_tariffs[1]
-        elif flag_name == 'V1': value = flag_tariffs[2]
-        elif flag_name == 'V2': value = flag_tariffs[3]
-        elif flag_name == 'EH': value = flag_tariffs[4]
-        return value
-
-    # DADO EXTERNO - matriz de tarifas
-    tariff_matrix = [{'subgrupo': 'B1', 'tarifas': [0.53224, 0.16121, 0.27636, 0.41454, 0.4606]},
-                     {'subgrupo': 'B2', 'tarifas': [0.46837, 0.46837, 0.44709]},
-                     {'subgrupo': 'B3', 'tarifas': [0.460451, 0.53224]},
-                     {'subgrupo': 'B4a', 'tarifas': [0.29273]},
-                     {'subgrupo': 'B4b', 'tarifas': [0.31934]}]
-
-    # DADO EXTERNO - matriz de impostos PIS/COFINS/ICMS
-    # ano, mês, PIS(%), COFINS(%), ICMS_res1(%), ICMS_res2(%), ICMS_rur1(%), ICMS_rur2(%), ICMS_out(%)
-    pis_cofins_icms = [[2021, 6,  0.50, 2.0, 12.0, 25.0, 12.0, 25.0, 25.0],
-                       [2021, 7,  0.41, 2.0, 12.0, 25.0, 12.0, 25.0, 25.0],
-                       [2021, 8,  0.55, 2.0, 12.0, 25.0, 12.0, 25.0, 25.0],
-                       [2021, 9,  0.53, 2.0, 12.0, 25.0, 12.0, 25.0, 25.0],
-                       [2021, 10, 0.55, 2.0, 12.0, 25.0, 12.0, 25.0, 25.0]]
-
-    # DADO EXTERNO - matriz de bandeiras tarifárias ao longo do tempo
-    # ano, mês, bandeira
-    tariff_flags = [[2021, 6, 'AM'],
-                    [2021, 7, 'AM'],
-                    [2021, 8, 'AM'],
-                    [2021, 9, 'AM'],
-                    [2021, 10, 'V1']]
-
-    # determina tarifas sem imposto (R$/kWh)
-    subgroup, subsubgroup = customer_type.split('_')[0].upper(), customer_type.split('_')[1]
-    tariff_group = next(item for item in tariff_matrix if item['subgrupo'] == subgroup)
-    tariff_value = tariff_group['tarifas'][int(subsubgroup)-1]
-
-    dt1, dt2 = data_list_energy_proj[0][0], data_list_energy_proj[len(data_list_energy_proj)-1][0]
-    dt1_month, dt1_year, dt2_month, dt2_year = dt1.month, dt1.year, dt2.month, dt2.year
-    pis_cofins_icms_1 = next(item for item in pis_cofins_icms if item[0] == dt1_year and item[1] == dt1_month)
-    pis_cofins_icms_2 = next(item for item in pis_cofins_icms if item[0] == dt2_year and item[1] == dt2_month)
-
-    # consulta últimas bandeiras vigentes para obter as bandeiras do PRO-RATA1 e do PRO-RATA2
-    flag_1, flag_2 = 'VD', 'VD'  # valores default
-    for fl in tariff_flags:
-        if fl[0] == dt1_year and fl[1] == dt1_month:
-            flag_1 = fl[2]
-        if fl[0] == dt2_year and fl[1] == dt2_month:
-            flag_2 = fl[2]
-
-    # montagem dos dados de tarifas, com a seguinte formatação:
-    # datetime (1 por mês), tarifa, pis(%), cofins(%), icms_res1(%), icms_res2(%), icms_rur1(%), icms_rur2(%), icms_out(%), bandeira
-    dt1, dt2 = datetime(dt1_year, dt1_month, 1, 0, 0, 0), datetime(dt2_year, dt2_month, 1, 0, 0, 0)
-    tariff_data = [[dt1, tariff_value] + pis_cofins_icms_1[2:] + [flag_1],
-                   [dt2, tariff_value] + pis_cofins_icms_2[2:] + [flag_2]]
-
-    # limites de icms para classe residencial (<= 150 e > 150 kWh) e classe rural (<= 500 e > 500 kWh)
-    icms_limits = [150.0, 500.0]
-
-    # função para cálculo da fatura
-    dt_base = data_list_energy_proj[0][0]
-    etot_accum_ini = data_list_energy_proj[0][1] + data_list_energy_proj[0][2] + data_list_energy_proj[0][3] + data_list_energy_proj[0][4]
-
-    # discrimina o tipo de consumidor
-    if subgroup == 'B1': customer_class = 0  # residencial
-    elif subgroup == 'B2': customer_class = 1  # rural
-    else: customer_class = 2  # outros
-
-    # calcula a fatura total para medição da lista data_list_energy_proj
-    etot_accum_prorata1 = -1
-    for i in range(len(data_list_energy_proj)):
-        v = data_list_energy_proj[i]
-        if i == 0:
-            etot_accum_ini = v[1] + v[2] + v[3] + v[4]
-            v.append(0.0)  # custo 0 para a medição inicial
-            continue
-        # calcula as energias pro-rata1 (kWh durante o mês 1) e pro-rata2 (kWh durante o mês 2)
-        etot_accum = v[1] + v[2] + v[3] + v[4]
-        if v[0].month == dt_base.month:
-            e_pro_rata1 = etot_accum - etot_accum_ini
-            e_pro_rata2 = 0.0
-        else:
-            if etot_accum_prorata1 == -1:
-                v_prev = data_list_energy_proj[i - 1]
-                etot_accum_prorata1 = v_prev[1] + v_prev[2] + v_prev[3] + v_prev[4]
-            e_pro_rata1 = etot_accum_prorata1 - etot_accum_ini
-            e_pro_rata2 = etot_accum - etot_accum_prorata1
-
-        # para energias pro-rata1 e pro-rata2, calcula partes 1 e 2
-        if customer_class == 0:
-            icms_limit = icms_limits[0]
-        elif customer_class == 1:
-            icms_limit = icms_limits[1]
-        else:
-            icms_limit = 100000.0
-
-        if e_pro_rata1 <= icms_limit:
-            e_pro_rata1_p1 = e_pro_rata1
-            e_pro_rata1_p2 = 0.0
-        else:
-            e_pro_rata1_p1 = icms_limit
-            e_pro_rata1_p2 = e_pro_rata1 - icms_limit
-        if e_pro_rata2 <= icms_limit:
-            e_pro_rata2_p1 = e_pro_rata2
-            e_pro_rata2_p2 = 0.0
-        else:
-            e_pro_rata2_p1 = icms_limit
-            e_pro_rata2_p2 = e_pro_rata2 - icms_limit
-
-        # determina tarifa, PIS e COFINS relativas aos meses 1 e 2
-        tariff_pis_cofins_1, tariff_pis_cofins_2 = None, None
-        for t in tariff_data:
-            if t[0].year == dt_base.year and t[0].month == dt_base.month:
-                tariff_pis_cofins_1 = t
-            if t[0].year == v[0].year and t[0].month == v[0].month:
-                tariff_pis_cofins_2 = t
-
-        # calcula tarifa com impostos e bandeira com impostos
-        if customer_class == 0:  # residencial
-            tariff_pr1, tariff_pr2 = tariff_pis_cofins_1[1], tariff_pis_cofins_2[1]
-            pis_pr1, pis_pr2 = tariff_pis_cofins_1[2] / 100.0, tariff_pis_cofins_2[2] / 100.0
-            cofins_pr1, cofins_pr2 = tariff_pis_cofins_1[3] / 100.0, tariff_pis_cofins_2[3] / 100.0
-            icms_pr1_p1, icms_pr1_p2 = tariff_pis_cofins_1[4] / 100.0, tariff_pis_cofins_1[5] / 100.0
-            icms_pr2_p1, icms_pr2_p2 = tariff_pis_cofins_2[4] / 100.0, tariff_pis_cofins_2[5] / 100.0
-            # tarifa com impostos para pro-rata1 (partes 1 e 2) e para pro-rata2 (partes 1 e 2)
-            tariffWithTaxes = [tariff_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
-                               tariff_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p2),
-                               tariff_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
-                               tariff_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p2)]
-
-            flag_pr1 = flag_value(tariff_pis_cofins_1[9], flag_tariffs)
-            flag_pr2 = flag_value(tariff_pis_cofins_2[9], flag_tariffs)
-            # bandeira com impostos para pro-rata1 (partes 1 e 2) e para pro-rata2 (partes 1 e 2)
-            flagWithTaxes = [flag_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
-                             flag_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p2),
-                             flag_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
-                             flag_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p2)]
-        elif customer_class == 1:  # rural
-            tariff_pr1, tariff_pr2 = tariff_pis_cofins_1[1], tariff_pis_cofins_2[1]
-            pis_pr1, pis_pr2 = tariff_pis_cofins_1[2] / 100.0, tariff_pis_cofins_2[2] / 100.0
-            cofins_pr1, cofins_pr2 = tariff_pis_cofins_1[3] / 100.0, tariff_pis_cofins_2[3] / 100.0
-            icms_pr1_p1, icms_pr1_p2 = tariff_pis_cofins_1[6] / 100.0, tariff_pis_cofins_1[7] / 100.0
-            icms_pr2_p1, icms_pr2_p2 = tariff_pis_cofins_2[6] / 100.0, tariff_pis_cofins_2[7] / 100.0
-            tariffWithTaxes = [tariff_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
-                               tariff_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p2),
-                               tariff_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
-                               tariff_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p2)]
-
-            flag_pr1 = flag_value(tariff_pis_cofins_1[9], flag_tariffs)
-            flag_pr2 = flag_value(tariff_pis_cofins_2[9], flag_tariffs)
-            # bandeira com impostos para pro-rata1 (partes 1 e 2) e para pro-rata2 (partes 1 e 2)
-            flagWithTaxes = [flag_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
-                             flag_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p2),
-                             flag_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
-                             flag_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p2)]
-        else:  # outros
-            tariff_pr1, tariff_pr2 = tariff_pis_cofins_1[1], tariff_pis_cofins_2[1]
-            pis_pr1, pis_pr2 = tariff_pis_cofins_1[2] / 100.0, tariff_pis_cofins_2[2] / 100.0
-            cofins_pr1, cofins_pr2 = tariff_pis_cofins_1[3] / 100.0, tariff_pis_cofins_2[3] / 100.0
-            icms_pr1_p1, icms_pr2_p1 = tariff_pis_cofins_1[8] / 100.0, tariff_pis_cofins_2[8] / 100.0
-            tariffWithTaxes = [tariff_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
-                               0.0,
-                               tariff_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
-                               0.0]
-            flag_pr1 = flag_value(tariff_pis_cofins_1[9], flag_tariffs)
-            flag_pr2 = flag_value(tariff_pis_cofins_2[9], flag_tariffs)
-            # bandeira com impostos para pro-rata1 (partes 1 e 2) e para pro-rata2 (partes 1 e 2)
-            flagWithTaxes = [flag_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
-                             0.0,
-                             flag_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
-                             0.0]
-
-        # cálculo da componente correspondente à tarifa, sem bandeira
-        value_pr1_p1 = e_pro_rata1_p1 * tariffWithTaxes[0]
-        value_pr1_p2 = e_pro_rata1_p2 * tariffWithTaxes[1]
-        value_pr2_p1 = e_pro_rata2_p1 * tariffWithTaxes[2]
-        value_pr2_p2 = e_pro_rata2_p2 * tariffWithTaxes[3]
-        value_total_tariff = value_pr1_p1 + value_pr1_p2 + value_pr2_p1 + value_pr2_p2
-
-        # cálculo da componente correspondente à bandeira tarifária
-        flag_pr1_p1 = e_pro_rata1_p1 * flagWithTaxes[0]
-        flag_pr1_p2 = e_pro_rata1_p2 * flagWithTaxes[1]
-        flag_pr2_p1 = e_pro_rata2_p1 * flagWithTaxes[2]
-        flag_pr2_p2 = e_pro_rata2_p2 * flagWithTaxes[3]
-        value_total_flag = flag_pr1_p1 + flag_pr1_p2 + flag_pr2_p1 + flag_pr2_p2
-
-        # cálculo total da fatura, até este momento:
-        value_total = value_total_tariff + value_total_flag
-        v.append(value_total)
-
-
-
 @login_required
 def whitetariff(request, mac):
     editionName = settings.APP_CONFIG['edition'].lower()
 
     if request.POST:
         form = WhiteTariffForm(request.POST)
+
+        # verifica filtros de data inicial e data final
+        if form['datetime_ini'].value():
+            datetime_ini = datetime.strptime(form['datetime_ini'].value(), '%Y-%m-%dT%H:%M')
+        elif form['datetime_ini_hidden'].value():
+            datetime_ini = datetime.strptime(form['datetime_ini_hidden'].value(), '%Y-%m-%dT%H:%M')
+        else:
+            datetime_ini = None
+
+        if form['datetime_fin'].value():
+            datetime_fin = datetime.strptime(form['datetime_fin'].value(), '%Y-%m-%dT%H:%M')
+        elif form['datetime_fin_hidden'].value():
+            datetime_fin = datetime.strptime(form['datetime_fin_hidden'].value(), '%Y-%m-%dT%H:%M')
+        else:
+            datetime_fin = None
 
         # verifica o filtro do gráfico 2 (consumo diário)
         if form['datetime_ref'].value():
@@ -480,6 +292,9 @@ def whitetariff(request, mac):
         # verifica filtros para o gráfico 3 (consumo típico)
         selectedSeasons = request.POST.getlist('ckSeason')
         selectedWeekdays = request.POST.getlist('ckWeekday')
+        if len(selectedSeasons) == 0 and len(selectedWeekdays) == 0:
+            selectedSeasons = request.POST.getlist('ckSeason_hidden')
+            selectedWeekdays = request.POST.getlist('ckWeekday_hidden')
         if len(selectedSeasons) == 0 and len(selectedWeekdays) == 0:
             # se as duas listas estão vazias, o usuário não Atualizou filtro do gráfico 3
             seasons_consider = [1, 2, 3, 4]
@@ -504,9 +319,8 @@ def whitetariff(request, mac):
         datetime_kwh_daily = None
         seasons_consider = [1, 2, 3, 4]
         days_consider = [0, 1, 2, 3, 4, 5, 6]
-
-    datetime_ini = None
-    datetime_fin = None
+        datetime_ini = None
+        datetime_fin = None
 
     #obtém lista de HTTPDevice tipo 1 (medidor de energia)
     meters_list = HTTPDevice.objects.filter(device_type__exact=1)
@@ -528,7 +342,7 @@ def whitetariff(request, mac):
 
     # Geração de dados, emulando a recuperação de dados do banco.
     meas_interval_minutes = 5   # intervalo em minutos entre medições
-    num_meas_days = 15  # número de dias de medição
+    num_meas_days = 45  # número de dias de medição
     num_meas = round((num_meas_days * 24 * 60) / meas_interval_minutes)  # número de medições
     datetime_fin_max = datetime.now()
     datetime_ini_min = datetime_fin_max + timedelta(minutes=-meas_interval_minutes * num_meas)
@@ -540,6 +354,9 @@ def whitetariff(request, mac):
     if datetime_ini is None and datetime_fin is None:
         datetime_ini = datetime_ini_min
         datetime_fin = datetime_fin_max
+        # se a diferença de datas supera 30 dias, limita datetime_ini
+        if (datetime_fin - datetime_ini).days > 30:
+            datetime_ini = datetime_fin + timedelta(days=-30)
 
     """
     Produção artificial dos dados (emulando a recuperação de dados do medidor)
@@ -555,7 +372,8 @@ def whitetariff(request, mac):
         datetime_rx = datetime_fin_max + timedelta(minutes=-meas_interval_minutes * i)
         if datetime_rx < datetime_ini_min:
             break
-        volts = np.random.normal(127.0, 3.0, 3)  # vetor de 3 tensões aleatórias
+        # volts = np.random.normal(127.0, 3.0, 3)  # vetor de 3 tensões aleatórias
+        volts = [127.0, 127.0, 127.0]
         va, vb, vc = round(float(volts[0]), 2), round(float(volts[1]), 2), round(float(volts[2]), 2)
 
         # corrente média x curva típica (pu da média)
@@ -569,14 +387,17 @@ def whitetariff(request, mac):
             # i_rated = 5 * loadshape_weekday[datetime_rx.hour]
             i_rated = 5 * loadshape_1pu[datetime_rx.hour]
 
+        #debug
+        if datetime_rx.day == 26 and datetime_rx.month == 8 and datetime_rx.hour == 12:
+            i_rated *= 3
+
         # amps = np.random.normal(i_rated, 1.0, 4)  # vetor de 4 correntes aleatórias
         amps = [i_rated, i_rated, i_rated, i_rated]
         ia, ib, ic, id = round(float(amps[0]), 2), round(float(amps[1]), 2), round(float(amps[2]), 2), round(
             float(amps[3]), 2)
 
-        #16/09  12h00
-        if datetime_rx.month == 9 and datetime_rx.day == 16 and datetime_rx.hour == 12:
-            ia, ib, ic, id = 2 * ia, 2 * ib, 2 * ic, 2 * id
+        # if datetime_rx.month == 9 and datetime_rx.day == 16 and datetime_rx.hour == 12:
+        #     ia, ib, ic, id = 2 * ia, 2 * ib, 2 * ic, 2 * id
 
         pa, pb, pc, pd = va * ia * pf, vb * ib * pf, vc * ic * pf, va * id * pf
         qa, qb, qc, qd = va * ia * sqrt(1.0 - pf * pf), vb * ib * sqrt(1.0 - pf * pf), vc * ic * sqrt(
@@ -655,10 +476,11 @@ def whitetariff(request, mac):
 
     # função para cálculo do valor total da fatura
     customer_type = 'B1_1'
-    cost_conventional(data_list_energy_proj, customer_type)
+    summary_costs = cost_conventional(data_list_energy_proj, customer_type, True)
+
 
     """
-    GRÁFICO 1 - Montagem dos dados relativos às tarifas
+    ABA 1 - Montagem dos dados relativos às tarifas
     """
     time_periods = 24
     data_list_tariffs = []
@@ -680,7 +502,7 @@ def whitetariff(request, mac):
 
 
     """
-    GRÁFICO 2 - Cálculo dos consumos horários, para um determinado dia
+    ABA 2 - Cálculo dos consumos horários, para um determinado dia
     Campos: patamar, kwh_tot_patamar, destaque_intermed, detaque_ponta
     """
     consumption_daily = []
@@ -736,7 +558,8 @@ def whitetariff(request, mac):
 
 
     """
-    GRÁFICO 3 - Consumo típico
+    ABA 3 - Consumo típico
+    Considera o filtro de data inicial e data final
     """
 
     # função para decidir se o dado pode ser utilizado para a curva típica de consumo
@@ -782,8 +605,12 @@ def whitetariff(request, mac):
         typical_consumption[hour_ref][1] += kwh_hour - kwh_prev
         count[hour_ref] += 1
     # normaliza os valores de consumo
-    for i in range(24):
-        typical_consumption[i][1] = round(typical_consumption[i][1] / count[i], 3)
+    if count == [0 for i in range(24)]:
+        for i in range(24):
+            typical_consumption[i][1] = 0.0
+    else:
+        for i in range(24):
+            typical_consumption[i][1] = round(typical_consumption[i][1] / count[i], 3)
 
     # Inclui os destaques para os intervalos intermediário e ponta
     max_kwh = 0.0
@@ -799,14 +626,24 @@ def whitetariff(request, mac):
         typical_consumption[i][2] = highlight_kwh
 
     """
-    Dados relativos à comparação de tarifas (sem bandeiras)
+    ABA 4 - Dados relativos à comparação de tarifas (sem bandeiras)
+    São considerados filtros de data inicial e data final
     """
-    # tarifa branca
-    data_list_comp1_white = [['FORA PONTA', 104.09, 0.44, 45.45, 12.00, 6.20, 51.65],
-                             ['INTERMEDIARIO', 6.56, 0.62, 4.05, 12.00, 0.55, 4.60],
-                             ['PONTA', 11.79, 0.96, 11.32, 12.00, 1.54, 12.87]]
-    # tarifa convencional
-    data_list_comp1_conv = [['CONVENCIONAL', 122.56, 0.52, 63.19, 12.00, 8.62, 71.81]]
+    # montagem de lista auxiliar, com a seguinte estrutura:
+    # datetime, kwh_faseA, kwh_faseB, kwh_faseC, kwh_faseD
+    data_list_energy_hour = []
+    for i in range(len(data_list_hour)):
+        val = data_list_hour[i]
+        if val[0] < datetime_ini:
+            continue
+        if val[0] > datetime_fin:
+            break
+        data_list_energy_hour.append([val[0], val[16], val[17], val[18], val[19]])
+
+    # cálculo da fatura considerando tarifa branca, sem bandeiras
+    data_list_comp1_white = cost_white(data_list_energy_hour)[0:3]
+    # cálculo da fatura considerando tarifa convencional, sem bandeiras
+    data_list_comp1_conv = cost_conventional(data_list_energy_hour, 'B1_1', False, None)
 
     # calcula resultados (total branca, total convencional e diferença)
     total_white = round(data_list_comp1_white[0][6] + data_list_comp1_white[1][6] + data_list_comp1_white[2][6], 2)
@@ -814,50 +651,38 @@ def whitetariff(request, mac):
     total_difference = round(total_conventional - total_white, 2)
 
     # consumos (kWh) totais por patamar horário
-    # 104.09, 11.79, 6.56 = 122,44
-    kwh_offpeak = 104.09
-    kwh_peak = 11.79
-    kwh_interm = 6.56
-    data_list_pie_kwh = [['Fora ponta', kwh_offpeak],
-                         ['Intermediário', kwh_interm],
-                         ['Ponta', kwh_peak]]
+    data_list_pie_kwh = [['Fora ponta', round(data_list_comp1_white[0][1])],
+                         ['Intermediário', round(data_list_comp1_white[1][1])],
+                         ['Ponta', round(data_list_comp1_white[2][1])]]
 
     """
-    Dados relativos à comparação de tarifas (com bandeiras)
+    ABA 5 - Dados relativos à comparação de tarifas (com bandeiras)
+    kWh, R$/kWh, R$(energia), %ICMS, R$(ICMS), R$(total)
     """
-    # comparação 2 - tarifa branca - bandeira verde
-    data_list_comp2_white_green = [['FORA PONTA', 104.09, 0.44, 45.45, 12.00, 6.20, 51.65],
-                                   ['INTERMEDIÁRIO', 6.56, 0.62, 4.05, 12.00, 0.55, 4.60],
-                                   ['PONTA', 11.79, 0.96, 11.32, 12.00, 1.54, 12.87],
-                                   ['TOTAL', 0, 0, 0, 0, 0, 69.12]]
-    # comparação 2 - tarifa convencional - bandeira verde
-    data_list_comp2_conv_green = [['CONVENCIONAL', 122.56, 0.52, 63.19, 12.00, 8.62, 71.81]]
+    # cálculo da fatura considerando tarifa branca e bandeira verde
+    data_list_comp2_white_green = cost_white(data_list_energy_hour, 'VD')
+    # cálculo da fatura considerando tarifa convencional e bandeira verde
+    data_list_comp2_conv_green = cost_conventional(data_list_energy_hour, 'B1_1', False, 'VD')
 
-    # comparação 2 - tarifa branca - bandeira amarela
-    data_list_comp2_white_yellow = [['FORA PONTA', 104.09, 0.44, 45.45, 12.00, 6.20, 53.23],
-                                    ['INTERMEDIÁRIO', 6.56, 0.62, 4.05, 12.00, 0.55, 4.70],
-                                    ['PONTA', 11.79, 0.96, 11.32, 12.00, 1.54, 13.05],
-                                    ['TOTAL', 0, 0, 0, 0, 0, 70.98]]
-    # comparação 2 - tarifa convencional - bandeira amarela
-    data_list_comp2_conv_yellow = [['CONVENCIONAL', 122.56, 0.52, 63.19, 12.00, 8.62, 73.68]]
+    # cálculo da fatura considerando tarifa branca e bandeira amarela
+    data_list_comp2_white_yellow = cost_white(data_list_energy_hour, 'AM')
+    # cálculo da fatura considerando tarifa convencional e bandeira amarela
+    data_list_comp2_conv_yellow = cost_conventional(data_list_energy_hour, 'B1_1', False, 'AM')
 
-    # comparação 2 - tarifa branca - bandeira vemelha I
-    data_list_comp2_white_red1 = [['FORA PONTA', 104.09, 0.44, 45.45, 12.00, 6.20, 56.58],
-                                  ['INTERMEDIÁRIO', 6.56, 0.62, 4.05, 12.00, 0.55, 4.92],
-                                  ['PONTA', 11.79, 0.96, 11.32, 12.00, 1.54, 13.42],
-                                  ['TOTAL', 0, 0, 0, 0, 0, 74.92]]
-    # comparação 2 - tarifa convencional - bandeira vemelha I
-    data_list_comp2_conv_red1 = [['CONVENCIONAL', 122.56, 0.52, 63.19, 12.00, 8.62, 77.61]]
+    # cálculo da fatura considerando tarifa branca e bandeira vermelha I
+    data_list_comp2_white_red1 = cost_white(data_list_energy_hour, 'V1')
+    # cálculo da fatura considerando tarifa convencional e bandeira vermelha I
+    data_list_comp2_conv_red1 = cost_conventional(data_list_energy_hour, 'B1_1', False, 'V1')
 
-    # comparação 2 - tarifa branca - bandeira vemelha II
-    data_list_comp2_white_red2 = []
-    data_list_comp2_white_red2.append(['FORA PONTA', 104.09, 0.44, 45.45, 12.00, 6.20, 59.03])
-    data_list_comp2_white_red2.append(['INTERMEDIÁRIO', 6.56, 0.62, 4.05, 12.00, 0.55, 5.07])
-    data_list_comp2_white_red2.append(['PONTA', 11.79, 0.96, 11.32, 12.00, 1.54, 13.70])
-    data_list_comp2_white_red2.append(['TOTAL', 0, 0, 0, 0, 0, 77.80])
-    # comparação 2 - tarifa convencional - bandeira vemelha II
-    data_list_comp2_conv_red2 = [['CONVENCIONAL', 122.56, 0.52, 63.19, 12.00, 8.62, 80.50]]
+    # cálculo da fatura considerando tarifa branca e bandeira vermelha II
+    data_list_comp2_white_red2 = cost_white(data_list_energy_hour, 'V2')
+    # cálculo da fatura considerando tarifa convencional e bandeira vermelha II
+    data_list_comp2_conv_red2 = cost_conventional(data_list_energy_hour, 'B1_1', False, 'V2')
 
+    # cálculo da fatura considerando tarifa branca e bandeira escassez hídrica (ws: water scarcity)
+    data_list_comp2_white_ws = cost_white(data_list_energy_hour, 'EH')
+    # cálculo da fatura considerando tarifa convencional e bandeira escassez hídrica
+    data_list_comp2_conv_ws = cost_conventional(data_list_energy_hour, 'B1_1', False, 'EH')
 
 
     """
@@ -867,10 +692,10 @@ def whitetariff(request, mac):
     tariff_profile = [{'t': val[0], 'white_offpeak': val[1], 'white_intermediate': val[2], 'white_peak': val[3], 'conventional': val[4]} for val in data_list_tariffs]
 
     # curva de consumo horários de um determinado dia
-    daily_kw = [{'t': val[0], 'kw_tot': val[1], 'highlight_interm': val[2],'highlight_peak': val[3]} for val in consumption_daily]
+    daily_kw = [{'t': val[0], 'kw_tot': val[1], 'highlight_interm': val[2], 'highlight_peak': val[3]} for val in consumption_daily]
 
     # curva típica de consumo
-    typical_kw = [{'t': val[0], 'kw_tot': val[1], 'highlight_interm': val[2],'highlight_peak': val[3]} for val in typical_consumption]
+    typical_kw = [{'t': val[0], 'kw_tot': val[1], 'highlight_interm': val[2], 'highlight_peak': val[3]} for val in typical_consumption]
 
 
     # dias da semana a serem marcados/desmarcados
@@ -890,7 +715,7 @@ def whitetariff(request, mac):
     ckSpring = 1 if 4 in seasons_consider else 0
     json_seasons_filter = {'ckSummer': ckSummer, 'ckFall': ckFall, 'ckWinter': ckWinter, 'ckSpring': ckSpring}
 
-    # dados relativos à comparação de tarifas (aba Comparação de tarifas sem bandeiras)
+    # dados relativos à comparação de tarifas da aba 4 (Comparação de tarifas sem bandeiras)
     json_comparison_white = [{'description': v[0], 'kwh': v[1], 'tariff': v[2], 'cost_energy': v[3],
                              'icms': v[4], 'cost_icms': v[5], 'total': v[6]} for v in data_list_comp1_white]
     json_comparison_conventional = [{'description': v[0], 'kwh': v[1], 'tariff': v[2], 'cost_energy': v[3],
@@ -907,7 +732,7 @@ def whitetariff(request, mac):
         value = new_main_currency + ',' + fractional_currency
         return value
 
-    # dados relativos à comparação de tarifas (aba Comparação de tarifas com bandeiras)
+    # dados relativos à comparação de tarifas aba 5 (Comparação de tarifas com bandeiras)
     json_comparison2_white = []
     for i in range(len(data_list_comp2_white_green)):
         desc = data_list_comp2_white_green[i][0]
@@ -915,8 +740,9 @@ def whitetariff(request, mac):
         tot_yellow = currency_format_brazil(data_list_comp2_white_yellow[i][6])
         tot_red1 = currency_format_brazil(data_list_comp2_white_red1[i][6])
         tot_red2 = currency_format_brazil(data_list_comp2_white_red2[i][6])
+        tot_ws = currency_format_brazil(data_list_comp2_white_ws[i][6])
         json_comparison2_white.append({'description': desc, 'total_green': tot_green, 'total_yellow': tot_yellow,
-                                       'total_red1': tot_red1, 'total_red2': tot_red2})
+                                       'total_red1': tot_red1, 'total_red2': tot_red2, 'total_ws': tot_ws})
     json_comparison2_conventional = []
     for i in range(len(data_list_comp2_conv_green)):
         desc = data_list_comp2_conv_green[i][0]
@@ -924,8 +750,9 @@ def whitetariff(request, mac):
         tot_yellow = currency_format_brazil(data_list_comp2_conv_yellow[i][6])
         tot_red1 = currency_format_brazil(data_list_comp2_conv_red1[i][6])
         tot_red2 = currency_format_brazil(data_list_comp2_conv_red2[i][6])
+        tot_ws = currency_format_brazil(data_list_comp2_conv_ws[i][6])
         json_comparison2_conventional.append({'description': desc, 'total_green': tot_green, 'total_yellow': tot_yellow,
-                                              'total_red1': tot_red1, 'total_red2': tot_red2})
+                                              'total_red1': tot_red1, 'total_red2': tot_red2, 'total_ws': tot_ws})
 
 
     # dados para preenchimento de gráficos de barra da comparação 2
@@ -934,12 +761,14 @@ def whitetariff(request, mac):
     yellow = data_list_comp2_conv_yellow[0][6]
     red1 = data_list_comp2_conv_red1[0][6]
     red2 = data_list_comp2_conv_red2[0][6]
-    json_comparison2_barCharts.append({'tariff': 'Convencional', 'cost_green': green, 'cost_yellow': yellow, 'cost_red1': red1, 'cost_red2': red2})
+    ws = data_list_comp2_conv_ws[0][6]
+    json_comparison2_barCharts.append({'tariff': 'Convencional', 'cost_green': green, 'cost_yellow': yellow, 'cost_red1': red1, 'cost_red2': red2, 'cost_ws': ws})
     green = data_list_comp2_white_green[3][6]
     yellow = data_list_comp2_white_yellow[3][6]
     red1 = data_list_comp2_white_red1[3][6]
     red2 = data_list_comp2_white_red2[3][6]
-    json_comparison2_barCharts.append({'tariff': 'Branca', 'cost_green': green, 'cost_yellow': yellow, 'cost_red1': red1, 'cost_red2': red2})
+    ws = data_list_comp2_white_ws[3][6]
+    json_comparison2_barCharts.append({'tariff': 'Branca', 'cost_green': green, 'cost_yellow': yellow, 'cost_red1': red1, 'cost_red2': red2, 'cost_ws': ws})
 
 
 
@@ -963,6 +792,8 @@ def whitetariff(request, mac):
         'json_days_filter': json_days_filter,
         'json_seasons_filter': json_seasons_filter,
         'datetime_kwh_daily': datetime_kwh_daily.strftime('%Y-%m-%d'),
+        'datetime_daily_ini_min': datetime_ini_min.strftime('%Y-%m-%d'),
+        'datetime_daily_fin_max': datetime_fin_max.strftime('%Y-%m-%d'),
         'datetime_ini': datetime_ini.strftime('%Y-%m-%dT%H:%M'),
         'datetime_fin': datetime_fin.strftime('%Y-%m-%dT%H:%M'),
         'datetime_ini_min': datetime_ini_min.strftime('%Y-%m-%dT%H:%M'),

@@ -9,49 +9,29 @@
         <label class="control-label mr-sm-2" style="font-size:70%">Data inicial:</label>
       </div>
       <div class="form-group" style="margin-top:3px">
-        <input type="datetime-local" class="form-control mb-2 mr-sm-2" style="font-size:70%" size="10" id="datetime_ini" name="datetime_ini" min="{{ datetime_ini_min }}" max="{{ datetime_fin_max }}" value="{{ datetime_ini }}" />
+        <input type="datetime-local" class="form-control mb-2 mr-sm-2" onChange="updateHiddenFields()" style="font-size:70%" size="10" id="datetime_ini" name="datetime_ini" min="{{ datetime_ini_min }}" max="{{ datetime_fin_max }}" value="{{ datetime_ini }}" />
       </div>
       <div class="form-group" style="margin-top:3px">
         <label class="control-label mr-sm-2" style="font-size:70%">Data final:</label>
       </div>
       <div class="form-group" style="margin-top:3px">
-        <input type="datetime-local" class="form-control mb-2 mr-sm-2" style="font-size:70%" size="10" id="datetime_fin" name="datetime_fin" min="{{ datetime_ini_min }}" max="{{ datetime_fin_max }}" value="{{ datetime_fin }}" />
+        <input type="datetime-local" class="form-control mb-2 mr-sm-2" onChange="updateHiddenFields()" style="font-size:70%" size="10" id="datetime_fin" name="datetime_fin" min="{{ datetime_ini_min }}" max="{{ datetime_fin_max }}" value="{{ datetime_fin }}" />
       </div>
-      <div class="form-group" style="margin-top:3px">
-        <label class="control-label mr-sm-2" style="font-size:70%">Medições a cada:</label>
-        <select class="browser-default custom-select" style="font-size:70%" id="comboMeasurementsInterval" name="comboMeasurementsInterval">
-          <option value="" selected disabled hidden>{{ interval_minutes }}</option>
-          {% if 5 in step_minutes_options %}
-            <option value="5">5min</option>
-          {% endif %}
-          {% if 30 in step_minutes_options %}
-            <option value="30">30min</option>
-          {% endif %}
-          {% if 60 in step_minutes_options %}
-            <option value="60">1h</option>
-          {% endif %}
-          {% if 120 in step_minutes_options %}
-            <option value="120">2h</option>
-          {% endif %}
-          {% if 180 in step_minutes_options %}
-            <option value="180">3h</option>
-          {% endif %}
-          {% if 240 in step_minutes_options %}
-            <option value="240">4h</option>
-          {% endif %}
-          {% if 300 in step_minutes_options %}
-            <option value="300">5h</option>
-          {% endif %}
-          {% if 360 in step_minutes_options %}
-            <option value="360">6h</option>
-          {% endif %}
-          {% if 720 in step_minutes_options %}
-            <option value="720">12h</option>
-          {% endif %}
-          {% if 1440 in step_minutes_options %}
-            <option value="1440">24h</option>
-          {% endif %}
-        </select>
+      <!-- Campos ocultos, apenas para replicar os filtros específicos (dias da semana e estações do ano) -->
+      <div>
+        <input hidden class="form-check-input" type="checkbox" value="alldays" id="ckAlldays_hidden" name="ckWeekday_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="monday" id="ck2af_hidden" name="ckWeekday_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="tuesday" id="ck3af_hidden" name="ckWeekday_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="wednesday" id="ck4af_hidden" name="ckWeekday_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="thursday" id="ck5af_hidden" name="ckWeekday_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="friday" id="ck6af_hidden" name="ckWeekday_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="saturday" id="ckSab_hidden" name="ckWeekday_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="sunday" id="ckDom_hidden" name="ckWeekday_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="allSeasons_hidden" id="ckAllSeasons_hidden" name="ckSeason_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="summer" id="ckSummer_hidden" name="ckSeason_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="fall" id="ckFall_hidden" name="ckSeason_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="winter" id="ckWinter_hidden" name="ckSeason_hidden" checked>
+        <input hidden class="form-check-input" type="checkbox" value="spring" id="ckSpring_hidden" name="ckSeason_hidden" checked>
       </div>
       <div class="form-group" style="margin-top:3px">
         <input type="submit" class="btn btn-secondary mb-2" style="font-size:70%" value="Atualizar" />
@@ -60,7 +40,7 @@
   </ul>
 </nav>
 <!-- Barra de pesquisa -->
-<nav class="navbar navbar-shadow col-md-2 d-none d-md-block bg-light" style="position:fixed;margin-top:250px;padding:0" id="navSearch">
+<nav class="navbar navbar-shadow col-md-2 d-none d-md-block bg-light" style="position:fixed;margin-top:215px;padding:0" id="navSearch">
   <form class="navbar-form navbar-left">
     <div class="input-gro up">
       <input type="search" class="form-control" placeholder="Pesquisar..." oninput="filterContent()" id="inputSearch">
@@ -75,7 +55,7 @@
   </form>
 </nav>
 <!-- Barra de navegação -->
-<nav class="navbar navbar-shadow col-md-2 d-none d-md-block bg-light" style="height:78%;position:fixed;margin-top:295px;overflow:auto" id="navMenu">
+<nav class="navbar navbar-shadow col-md-2 d-none d-md-block bg-light" style="height:78%;position:fixed;margin-top:260px;overflow:auto" id="navMenu">
   <ul class="nav navbar-nav">
     <li class="dropdown show">
       <!-- Lista de instalações -->

@@ -58,7 +58,7 @@
 									{% csrf_token %}
 									<div class="form-group" style="margin-top:10px;align:center">
 										<label class="control-label mr-sm-2" style="font-size:85%">Data:</label>
-										<input type="date" class="form-control mb-2 mr-sm-2" style="font-size:70%" size="10" id="datetime_ref" name="datetime_ref" value="{{datetime_kwh_daily}}" />
+										<input type="date" class="form-control mb-2 mr-sm-2" style="font-size:70%" size="10" id="datetime_ref" name="datetime_ref" value="{{datetime_kwh_daily}}" min="{{ datetime_daily_ini_min }}" max="{{ datetime_daily_fin_max }}" />
 										<input type="submit" class="btn btn-secondary mb-2" style="font-size:70%" value="Atualizar" />
 									</div>
 								</form>
@@ -75,58 +75,66 @@
 									<div class="col-sm-2" style="text-align:left;margin-top:10px">
 										<label class="control-label mr-sm-2" style="font-size:70%">Filtro de dias da semana:</label>
 									</div>
-									<div class="col-sm-7" style="text-align:left;margin-top:10px">
+									<div class="col-sm-8" style="text-align:left;margin-top:10px">
 										<div class="form-check form-check-inline">
-											<input class="form-check-input" type="checkbox" value="monday" id="ck2af" name="ckWeekday" checked>
+											<input class="form-check-input" type="checkbox" onClick="updateCheckboxesDays(this)" value="alldays" id="ckAlldays" name="ckWeekday" checked>
+											<label class="form-check-label" for="ck2af" style="font-size:85%">Todos</label>
+										</div>
+										<div class="form-check form-check-inline">
+											<input class="form-check-input" type="checkbox" onClick="updateSelectAllDays(this)" value="monday" id="ck2af" name="ckWeekday" checked>
 											<label class="form-check-label" for="ck2af" style="font-size:85%">Segundas</label>
 										</div>
 										<div class="form-check form-check-inline">
-											<input class="form-check-input" type="checkbox" value="tuesday" id="ck3af" name="ckWeekday" checked>
+											<input class="form-check-input" type="checkbox" onClick="updateSelectAllDays(this)" value="tuesday" id="ck3af" name="ckWeekday" checked>
 											<label class="form-check-label" for="ck3af" style="font-size:85%">Terças</label>
 										</div>
 										<div class="form-check form-check-inline">
-											<input class="form-check-input" type="checkbox" value="wednesday" id="ck4af" name="ckWeekday" checked>
+											<input class="form-check-input" type="checkbox" onClick="updateSelectAllDays(this)" value="wednesday" id="ck4af" name="ckWeekday" checked>
 											<label class="form-check-label" for="ck4af" style="font-size:85%">Quartas</label>
 										</div>
 										<div class="form-check form-check-inline">
-											<input class="form-check-input" type="checkbox" value="thursday" id="ck5af" name="ckWeekday" checked>
+											<input class="form-check-input" type="checkbox" onClick="updateSelectAllDays(this)" value="thursday" id="ck5af" name="ckWeekday" checked>
 											<label class="form-check-label" for="ck5af" style="font-size:85%">Quintas</label>
 										</div>
 										<div class="form-check form-check-inline">
-											<input class="form-check-input" type="checkbox" value="friday" id="ck6af" name="ckWeekday" checked>
+											<input class="form-check-input" type="checkbox" onClick="updateSelectAllDays(this)" value="friday" id="ck6af" name="ckWeekday" checked>
 											<label class="form-check-label" for="ck6af" style="font-size:85%">Sextas</label>
 										</div>
 										<div class="form-check form-check-inline">
-											<input class="form-check-input" type="checkbox" value="saturday" id="ckSab" name="ckWeekday" checked>
+											<input class="form-check-input" type="checkbox" onClick="updateSelectAllDays(this)" value="saturday" id="ckSab" name="ckWeekday" checked>
 											<label class="form-check-label" for="ckSab" style="font-size:85%">Sábados</label>
 										</div>
 										<div class="form-check form-check-inline">
-											<input class="form-check-input" type="checkbox" value="sunday" id="ckDom" name="ckWeekday" checked>
+											<input class="form-check-input" type="checkbox" onClick="updateSelectAllDays(this)" value="sunday" id="ckDom" name="ckWeekday" checked>
 											<label class="form-check-label" for="ckDom" style="font-size:85%">Domingos</label>
 										</div>
 									</div>
-									<div class="col-sm-3" style="text-align:left;margin-top:5px">
+									<div class="col-sm-2" style="text-align:left;margin-top:5px">
 									</div>
 								</div>
 								<div class="row">
 									<div class="col-sm-2" style="text-align:left">
 										<label class="control-label mr-sm-2" style="font-size:70%">Filtro de estações do ano:</label>
 									</div>
-									<div class="col-sm-7" style="text-align:left">
+									<div class="col-sm-8" style="text-align:left">
 										<div class="form-check form-check-inline">
-											<input class="form-check-input" type="checkbox" value="summer" id="ckSummer" name="ckSeason" checked>
+											<input class="form-check-input" type="checkbox" onClick="updateCheckboxesSeasons(this)" value="allSeasons" id="ckAllSeasons" name="ckSeason" checked>
+											<label class="form-check-label" for="ckSummer" style="font-size:85%">Todos</label>
+										</div>
+										<div class="form-check form-check-inline">
+											<input class="form-check-input" type="checkbox" onClick="updateSelectAllSeasons(this)" value="summer" id="ckSummer" name="ckSeason" checked>
 											<label class="form-check-label" for="ckSummer" style="font-size:85%">Verão</label>
 										</div>
 										<div class="form-check form-check-inline">
-											<input class="form-check-input" type="checkbox" value="fall" id="ckFall" name="ckSeason" checked>
+											<input class="form-check-input" type="checkbox" onClick="updateSelectAllSeasons(this)" value="fall" id="ckFall" name="ckSeason" checked>
 											<label class="form-check-label" for="ckFall" style="font-size:85%">Outono</label>
 										</div>
 										<div class="form-check form-check-inline">
-											<input class="form-check-input" type="checkbox" value="winter" id="ckWinter" name="ckSeason" checked>
+											<input class="form-check-input" type="checkbox"onClick="updateSelectAllSeasons(this)" value="winter" id="ckWinter" name="ckSeason" checked>
 											<label class="form-check-label" for="ckWinter" style="font-size:85%">Inverno</label>
 										</div>
 										<div class="form-check form-check-inline">
-											<input class="form-check-input" type="checkbox" value="spring" id="ckSpring" name="ckSeason" checked>
+											<input class="form-check-input" type="checkbox" onClick="updateSelectAllSeasons(this)" value="spring" id="ckSpring" name="ckSeason" checked>
 											<label class="form-check-label" for="ckSpring" style="font-size:85%">Primavera</label>
 										</div>
 									</div>
@@ -134,6 +142,13 @@
 								<div class="row">
 									<div class="col-sm-2" style="text-align:left">
 										<label class="control-label mr-sm-2" style="font-size:70%">Aplicar os filtros acima</label>
+									</div>
+									<!--  Campos ocultos para replicarem os filtros de data inicial e data final -->
+									<div>
+										<label hidden for="datetime_ini_hidden">Inicial</label>
+										<input type="hidden" id="datetime_ini_hidden" name="datetime_ini_hidden" value="{{ datetime_ini }}" />
+										<label hidden for="datetime_fin_hidden">Final</label>
+										<input type="hidden" id="datetime_fin_hidden" name="datetime_fin_hidden" value="{{ datetime_fin }}" />
 									</div>
 									<div class="col-sm-10" style="text-align:left">
 										<input type="submit" class="btn btn-secondary mb-2" style="font-size:70%" value="Atualizar" />
@@ -208,7 +223,7 @@
 							<!-- <div class="row"><div class="col" style="text-align:center;font-size:120%">Bandeiras tarifárias</div></div> -->
 							<div class="row" style="margin-top:10px;margin-bottom:10px">
 								<!-- Coluna da bandeira Verde -->
-								<div class="col-sm-3" style="height:240px">
+								<div class="col" style="height:240px">
 									<div class="row align-items-center" style="margin-left:1mm;margin-right:1mm;background-color:#006400;text-align:center;color:#FFFFFF;font-size:75%;font-weight:bold;height:25px;vertical-align:middle">
 										<div class="col" style="text-align:center">Bandeira Verde</div>
 									</div>
@@ -234,7 +249,7 @@
 									</div>
 								</div>
 								<!-- Coluna da bandeira Amarela -->
-								<div class="col-sm-3" style="border-left:solid 4px #DCDCDC;height:240px">
+								<div class="col" style="border-left:solid 4px #DCDCDC;height:240px">
 									<div class="row align-items-center" style="margin-left:1mm;margin-right:1mm;background-color:#FFFF33;text-align:center;color:#000000;font-size:75%;font-weight:bold;height:25px">
 										<div class="col" style="text-align:center">Bandeira Amarela</div>
 									</div>
@@ -260,9 +275,9 @@
 									</div>
 								</div>
 								<!-- Coluna da bandeira Vermelha I -->
-								<div class="col-sm-3" style="border-left:solid 4px #DCDCDC;height:240px">
+								<div class="col" style="border-left:solid 4px #DCDCDC;height:240px">
 									<div class="row align-items-center" style="margin-left:1mm;margin-right:1mm;background-color:#FF0000;text-align:center;color:#FFFFFF;font-size:75%;font-weight:bold;height:25px">
-										<div class="col" style="text-align:center">Bandeira Vermelha Patamar I</div>
+										<div class="col" style="text-align:center">Bandeira Vermelha I</div>
 									</div>
 									<div class="table-responsive" style="margin-top:10px">
 										<table class="table table-striped table-sm" id="myTable7" style="font-size:70%">
@@ -286,9 +301,9 @@
 									</div>
 								</div>
 								<!-- Coluna da bandeira Vermelha II -->
-								<div class="col-sm-3" style="border-left:solid 4px #DCDCDC;height:240px">
+								<div class="col" style="border-left:solid 4px #DCDCDC;height:240px">
 									<div class="row align-items-center" style="margin-left:1mm;margin-right:1mm;background-color:#FF0000;text-align:center;color:#FFFFFF;font-size:75%;font-weight:bold;height:25px">
-										<div class="col" style="text-align:center">Bandeira Vermelha Patamar II</div>
+										<div class="col" style="text-align:center">Bandeira Vermelha II</div>
 									</div>
 									<div class="table-responsive" style="margin-top:10px">
 										<table class="table table-striped table-sm" id="myTable9" style="font-size:70%">
@@ -311,19 +326,48 @@
 										</table>
 									</div>
 								</div>
+								<!-- Coluna da bandeira Escassez Hídrica -->
+								<div class="col" style="border-left:solid 4px #DCDCDC;height:240px">
+									<div class="row align-items-center" style="margin-left:1mm;margin-right:1mm;background-color:#4B0082;text-align:center;color:#FFFFFF;font-size:75%;font-weight:bold;height:25px">
+										<div class="col" style="text-align:center">Bandeira Escassez Hídrica</div>
+									</div>
+									<div class="table-responsive" style="margin-top:10px">
+										<table class="table table-striped table-sm" id="myTable11" style="font-size:70%">
+											<thead>
+												<tr>
+													<th scope="col">Item</th>
+													<th scope="col">Total</th>
+												</tr>
+											</thead>
+										</table>
+									</div>
+									<div class="table-responsive">
+										<table class="table table-striped table-sm" id="myTable12" style="font-size:70%">
+											<thead>
+												<tr>
+													<th scope="col">Item</th>
+													<th scope="col">Total</th>
+												</tr>
+											</thead>
+										</table>
+									</div>
+								</div>
 							</div>
 							<div class="row" style="margin-top:10px">
-								<div class="col-sm-3">
+								<div class="col">
 									<div class="container" id="myChart5"></div>
 								</div>
-								<div class="col-sm-3">
+								<div class="col">
 									<div class="container" id="myChart6"></div>
 								</div>
-								<div class="col-sm-3">
+								<div class="col">
 									<div class="container" id="myChart7"></div>
 								</div>
-								<div class="col-sm-3">
+								<div class="col">
 									<div class="container" id="myChart8"></div>
+								</div>
+								<div class="col">
+									<div class="container" id="myChart9"></div>
 								</div>
 							</div>
 						</div>
@@ -369,8 +413,6 @@
 			var valuesJson_comparison2_conv = {{ json_comparison2_conventional|safe }};
 			var valuesJson_comparison2_barCharts = {{ json_comparison2_barCharts|safe }};
 
-
-
 			//prepara dados
 			//valuesJson.forEach(function(d) {
 			//	d.datetime_rx = parseTime(d.datetime_rx);
@@ -385,8 +427,8 @@
 			dcChartTableComparison1(valuesJson_white, valuesJson_coventional, valuesJson_comparison_kwh, "#myTable1", "#myTable2", "#myChart4");
 
 			//preenche tabelas (e gráficos) da comparação tarifa branca x convencional (com bandeiras)
-			dcChartTableComparison2(valuesJson_comparison2_white, valuesJson_comparison2_conv, "#myTable3", "#myTable4", "#myTable5", "#myTable6", "#myTable7", "#myTable8", "#myTable9", "#myTable10");
-			dcChartTableComparison2_barCharts(valuesJson_comparison2_barCharts, "#myChart5", "#myChart6", "#myChart7", "#myChart8");
+			dcChartTableComparison2(valuesJson_comparison2_white, valuesJson_comparison2_conv, "#myTable3", "#myTable4", "#myTable5", "#myTable6", "#myTable7", "#myTable8", "#myTable9", "#myTable10", "#myTable11", "#myTable12");
+			dcChartTableComparison2_barCharts(valuesJson_comparison2_barCharts, "#myChart5", "#myChart6", "#myChart7", "#myChart8", "#myChart9");
 
 			getSetScrollTop();
 			getSetActiveTab();

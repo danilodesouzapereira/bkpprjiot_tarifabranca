@@ -12,6 +12,13 @@ class DateFilterForm(forms.Form):
 class WhiteTariffForm(forms.Form):
     # filtro relativo ao gráfico de consumo medido (gráfico 2)
     datetime_ref = forms.DateTimeField(label='Data')
+    # filtro relativo à data inicial e à data final (navbar à esquerda)
+    datetime_ini = forms.DateTimeField(label='Data inicial')
+    datetime_fin = forms.DateTimeField(label='Data final')
+    # filtro relativo à data inicial e à data final (campos ocultos)
+    datetime_ini_hidden = forms.DateTimeField(label='Inicial')
+    datetime_fin_hidden = forms.DateTimeField(label='Final')
+
 
 
 class IcaroAdminAuthenticationForm(AdminAuthenticationForm):

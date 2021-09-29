@@ -551,23 +551,33 @@ class Transaction(models.Model):
 TariffFlag: representa uma bandeira tarifária
 """
 class TariffFlag(models.Model):
-    # número inteiro da bandeira
+    # identificador da bandeira
     flag_id = models.IntegerField(default = 0)
     # descrição da bandeira
     desc = models.CharField(max_length = 50)
-    # valor da bandeira tarifária (R$/kWh)
+    # valor (R$/kWh)
     value = models.DecimalField(max_digits = 8, decimal_places = 5, default = 0.0)
+    # data inicial de vigência
+    datetime_ini = models.DateTimeField()
+    # data final de vigência
+    datetime_fin = models.DateTimeField()
+    def __str__(self):
+        text = 'Bandeira tarifária - ' + str(self.desc) + ' ' + str(self.datetime_ini.strftime('%d/%m/%Y %H:%M:%S'))
+        return text
+    class Meta:
+        verbose_name = "Valor de bandeira tarifária"
+        verbose_name_plural = "Valores de bandeira tarifária"
 
 
 """
 Tariff: representa uma tarifa
 """
 class Tariff(models.Model):
-    # grupo da tarifa, com possíveis valores: A, B
+    # grupo da tarifa ('A', 'B', ...)
     group = models.CharField(max_length = 1)
-    # nome da tarifa (Convencional, Branca, Azul, ...)
+    # nome da tarifa ('Convencional', 'Branca', 'Azul', ...)
     name = models.CharField(max_length=50)
-    # subgrupo da tarifa convencional (B1, B2, ...)
+    # subgrupo da tarifa convencional ('B1', 'B2', 'B4a', ...)
     subgroup = models.CharField(max_length = 3)
     # ID da classificação (1, 2, 3, ...)
     classif_id = models.IntegerField(default=0)
@@ -575,4 +585,55 @@ class Tariff(models.Model):
     classif_desc = models.CharField(max_length=50)
     # valor da tarifa (R$/kWh)
     value = models.DecimalField(max_digits = 8, decimal_places = 5, default = 0.0)
+    def __str__(self):
+        text = 'Tarifa - ' + str(self.name) + ' ' + str(self.subgroup) + ' ' + str(self.classif_desc)
+        return text
+    class Meta:
+        verbose_name = "Valor da tarifa"
+        verbose_name_plural = "Valores da tarifa"
 
+
+"""
+TaxPisCofins: representa os impostos PIS/COFINS de um determinado mês
+"""
+class TaxPisCofins(models.Model):
+    # data inicial de vigência PIS/COFINS
+    datetime_ini = models.DateTimeField()
+    # data final de vigência PIS/COFINS
+    datetime_fin = models.DateTimeField()
+    # valor percentual do imposto referente ao PIS
+    value_pis = models.DecimalField(max_digits=5, decimal_places=3, default=0.0)
+    # valor percentual do imposto referente ao COFINS
+    value_cofins = models.DecimalField(max_digits=5, decimal_places=3, default=0.0)
+    def __str__(self):
+        text = 'PIS/COFINS - ' + str(self.datetime_ini.strftime('%d/%m/%Y %H:%M:%S'))
+        return text
+    class Meta:
+        verbose_name = "Valor de PIS/COFINS"
+        verbose_name_plural = "Valores de PIS/COFINS"
+
+
+"""
+TaxIcms: representa os valores de ICMS para um determinado mês
+"""
+class TaxIcms(models.Model):
+    # data inicial de vigência PIS/COFINS
+    datetime_ini = models.DateTimeField()
+    # data final de vigência PIS/COFINS
+    datetime_fin = models.DateTimeField()
+    # valor percentual para consumidor residencial 1 (até 150 kWh)
+    valueRes1 = models.DecimalField(max_digits=5, decimal_places=3, default=0.0)
+    # valor percentual para consumidor residencial 2 (acima 150 kWh)
+    valueRes2 = models.DecimalField(max_digits=5, decimal_places=3, default=0.0)
+    # valor percentual para consumidor rural 1 (até 500 kWh)
+    valueRur1 = models.DecimalField(max_digits=5, decimal_places=3, default=0.0)
+    # valor percentual para consumidor rural 2 (acima de 500 kWh)
+    valueRur2 = models.DecimalField(max_digits=5, decimal_places=3, default=0.0)
+    # valor percentual para outras classes de consumidores
+    valueOther = models.DecimalField(max_digits=5, decimal_places=3, default=0.0)
+    def __str__(self):
+        text = 'ICMS - ' + str(self.datetime_ini.strftime('%d/%m/%Y %H:%M:%S'))
+        return text
+    class Meta:
+        verbose_name = "Valor de ICMS"
+        verbose_name_plural = "Valores de ICMS"
