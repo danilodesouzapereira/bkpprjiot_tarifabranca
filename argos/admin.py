@@ -155,21 +155,21 @@ class TariffAdmin(admin.ModelAdmin):
     ]
 
 class TariffFlagAdmin(admin.ModelAdmin):
-    list_display = ['flag_id', 'desc', 'value', 'datetime_ini', 'datetime_fin']
+    list_display = ['type_id', 'desc', 'year', 'month', 'value']
     fieldsets = [
-        (None, {'fields': ['flag_id', 'desc', 'value', 'datetime_ini', 'datetime_fin']})
+        (None, {'fields': ['type_id', 'desc', 'year', 'month', 'value']})
     ]
 
 class TaxIcmsAdmin(admin.ModelAdmin):
-    list_display = ['datetime_ini', 'datetime_fin', 'valueRes1', 'valueRes2', 'valueRur1', 'valueRur2', 'valueOther']
+    list_display = ['year', 'month', 'valueRes1', 'valueRes2', 'valueRur1', 'valueRur2', 'valueOther']
     fieldsets = [
-        (None, {'fields': ['datetime_ini', 'datetime_fin', 'valueRes1', 'valueRes2', 'valueRur1', 'valueRur2', 'valueOther']})
+        (None, {'fields': ['year', 'month', 'valueRes1', 'valueRes2', 'valueRur1', 'valueRur2', 'valueOther']})
     ]
 
 class TaxPisCofinsAdmin(admin.ModelAdmin):
-    list_display = ['datetime_ini', 'datetime_fin', 'value_pis', 'value_cofins']
+    list_display = ['year', 'month', 'value_pis', 'value_cofins']
     fieldsets = [
-        (None, {'fields': ['datetime_ini', 'datetime_fin', 'value_pis', 'value_cofins']})
+        (None, {'fields': ['year', 'month', 'value_pis', 'value_cofins']})
     ]
 
 

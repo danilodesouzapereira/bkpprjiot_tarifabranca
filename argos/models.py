@@ -551,18 +551,18 @@ class Transaction(models.Model):
 TariffFlag: representa uma bandeira tarifária
 """
 class TariffFlag(models.Model):
-    # identificador da bandeira
-    flag_id = models.IntegerField(default = 0)
+    # número inteiro do tipo de bandeira
+    type_id = models.IntegerField(default=0)
     # descrição da bandeira
     desc = models.CharField(max_length = 50)
+    # ano de vigência
+    year = models.IntegerField(default=0)
+    # mês de vigência
+    month = models.IntegerField(default=0)
     # valor (R$/kWh)
     value = models.DecimalField(max_digits = 8, decimal_places = 5, default = 0.0)
-    # data inicial de vigência
-    datetime_ini = models.DateTimeField()
-    # data final de vigência
-    datetime_fin = models.DateTimeField()
     def __str__(self):
-        text = 'Bandeira tarifária - ' + str(self.desc) + ' ' + str(self.datetime_ini.strftime('%d/%m/%Y %H:%M:%S'))
+        text = 'Bandeira - ' + str(self.month) + '/' + str(self.year) + ' - ' + str(self.value)
         return text
     class Meta:
         verbose_name = "Valor de bandeira tarifária"
@@ -597,16 +597,16 @@ class Tariff(models.Model):
 TaxPisCofins: representa os impostos PIS/COFINS de um determinado mês
 """
 class TaxPisCofins(models.Model):
-    # data inicial de vigência PIS/COFINS
-    datetime_ini = models.DateTimeField()
-    # data final de vigência PIS/COFINS
-    datetime_fin = models.DateTimeField()
+    # ano de vigência
+    year = models.IntegerField(default=0)
+    # mês de vigência
+    month = models.IntegerField(default=0)
     # valor percentual do imposto referente ao PIS
     value_pis = models.DecimalField(max_digits=5, decimal_places=3, default=0.0)
     # valor percentual do imposto referente ao COFINS
     value_cofins = models.DecimalField(max_digits=5, decimal_places=3, default=0.0)
     def __str__(self):
-        text = 'PIS/COFINS - ' + str(self.datetime_ini.strftime('%d/%m/%Y %H:%M:%S'))
+        text = 'PIS/COFINS - ' + str(self.month) + '/' + str(self.year)
         return text
     class Meta:
         verbose_name = "Valor de PIS/COFINS"
@@ -617,10 +617,10 @@ class TaxPisCofins(models.Model):
 TaxIcms: representa os valores de ICMS para um determinado mês
 """
 class TaxIcms(models.Model):
-    # data inicial de vigência PIS/COFINS
-    datetime_ini = models.DateTimeField()
-    # data final de vigência PIS/COFINS
-    datetime_fin = models.DateTimeField()
+    # ano de vigência
+    year = models.IntegerField(default=0)
+    # mês de vigência
+    month = models.IntegerField(default=0)
     # valor percentual para consumidor residencial 1 (até 150 kWh)
     valueRes1 = models.DecimalField(max_digits=5, decimal_places=3, default=0.0)
     # valor percentual para consumidor residencial 2 (acima 150 kWh)
@@ -632,7 +632,7 @@ class TaxIcms(models.Model):
     # valor percentual para outras classes de consumidores
     valueOther = models.DecimalField(max_digits=5, decimal_places=3, default=0.0)
     def __str__(self):
-        text = 'ICMS - ' + str(self.datetime_ini.strftime('%d/%m/%Y %H:%M:%S'))
+        text = 'ICMS - ' + str(self.month) + '/' + str(self.year)
         return text
     class Meta:
         verbose_name = "Valor de ICMS"

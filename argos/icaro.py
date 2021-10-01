@@ -1,5 +1,6 @@
 import datetime
 from datetime import datetime
+from .models import TariffFlag, Tariff, TaxIcms, TaxPisCofins
 
 
 def cost_white(data_list_energy_hour, flag_name = None):
@@ -83,46 +84,76 @@ Função para cálculo do valor total da fatura com tarifa convencional
 - data_list_energy_proj: lista com os valores de consumo
 - customer_type: tipo/classe do consumidor (B1_1, B1_2, ..., B2_1, B2_2, ...
 - use_valid_flags: usar (ou não) as bandeiras vigentes
-- simulated_flag: nome da bandeira simulada (apenas se use_valid_flags=false)
+- simulated_flag: id da bandeira, começando em 0 (verde), 1 (amarela), ...
 """
-def cost_conventional(data_list_energy_proj, customer_type, use_valid_flags, simulated_flag = None):
+def cost_conventional(data_list_energy_proj, customer_type, use_valid_flags, simulated_flag = 0):
 
-    # DADO EXTERNO - matriz de bandeiras tarifárias, com a seguinte formatação:
-    # bandeira, valor (R$/kWh sem impostos)
+    # Recupera do banco os dados históricos de bandeira, identificando
+    # os valores mais recentes de cada bandeira
+    flag_tariffs_dict = [{'type': i+1, 'dt_ini': None, 'value': 0.0} for i in range(5)]
+    allTariffFlags = TariffFlag.objects.all()
+    tf: TariffFlag
+    for tf in allTariffFlags:
+        dt = datetime(tf.year, tf.month, 1, 0, 0, 0)
+        if flag_tariffs_dict[tf.type_id - 1]['dt_ini'] is None:
+            flag_tariffs_dict[tf.type_id - 1]['dt_ini'] = dt
+            flag_tariffs_dict[tf.type_id - 1]['value'] = float(tf.value)
+        elif dt > flag_tariffs_dict[tf.type_id - 1]['dt_ini'] and float(tf.value) > flag_tariffs_dict[tf.type_id - 1]['value']:
+            flag_tariffs_dict[tf.type_id - 1]['dt_ini'] = dt
+            flag_tariffs_dict[tf.type_id - 1]['value'] = float(tf.value)
+
+    # Valores das bandeiras tarifárias, na seguinte sequência:
     # 0: verde, 1: amarela, 2: vermelha pat. 1, 3: vermelha pat. 2, 4: escassez hídrica
-    flag_tariffs = [0.0, 0.01874, 0.03971, 0.09492, 0.1420]
+    flag_tariffs = [flag_tariffs_dict[i]['value'] for i in range(5)]
 
-    # função para mapear nome da bandeira e valor da bandeira
-    def flag_value(flag_name, flag_tariffs):
-        if flag_name == 'VD': value = flag_tariffs[0]
-        elif flag_name == 'AM': value = flag_tariffs[1]
-        elif flag_name == 'V1': value = flag_tariffs[2]
-        elif flag_name == 'V2': value = flag_tariffs[3]
-        else: value = flag_tariffs[4]
-        return value
 
-    # DADO EXTERNO - matriz de tarifas
-    tariff_matrix = [{'subgrupo': 'B1', 'tarifas': [0.53224, 0.16121, 0.27636, 0.41454, 0.4606]},
-                     {'subgrupo': 'B2', 'tarifas': [0.46837, 0.46837, 0.44709]},
-                     {'subgrupo': 'B3', 'tarifas': [0.460451, 0.53224]},
-                     {'subgrupo': 'B4a', 'tarifas': [0.29273]},
-                     {'subgrupo': 'B4b', 'tarifas': [0.31934]}]
+    # Recupera dados da tarifa. Cada item da lista tariff_matrix é um dict, como no exemplo:
+    # {'subgrupo': 'B1', 'tarifas': [0.53224, 0.16121, 0.27636, 0.41454, 0.4606]}
+    allTariffs = Tariff.objects.all()
+    tariff_matrix = []
+    for t in allTariffs:
+        v = next((item for item in tariff_matrix if item["subgrupo"] == t.subgroup), None)
+        if v:
+            if t.classif_id < len(v['tarifas']):
+                v['tarifas'][t.classif_id - 1] = float(t.value)
+            else:
+                diff = t.classif_id - len(v['tarifas'])
+                for i in range(diff):
+                    if i < diff - 1:
+                        v['tarifas'].append(0.0)
+                    else:
+                        v['tarifas'].append(float(t.value))
+        else:
+            v = {'subgrupo': t.subgroup, 'tarifas': []}
+            for i in range(t.classif_id):
+                if i < t.classif_id - 1:
+                    v['tarifas'].append(0.0)
+                else:
+                    v['tarifas'].append(float(t.value))
+            tariff_matrix.append(v)
 
-    # DADO EXTERNO - matriz de impostos PIS/COFINS/ICMS
+    # Recupera do banco os dados relativos a PIS, COFINS e ICMS. Cada item tem o formato:
     # ano, mês, PIS(%), COFINS(%), ICMS_res1(%), ICMS_res2(%), ICMS_rur1(%), ICMS_rur2(%), ICMS_out(%)
-    pis_cofins_icms = [[2021, 6,  0.50, 2.0, 12.0, 25.0, 12.0, 25.0, 25.0],
-                       [2021, 7,  0.41, 2.0, 12.0, 25.0, 12.0, 25.0, 25.0],
-                       [2021, 8,  0.55, 2.0, 12.0, 25.0, 12.0, 25.0, 25.0],
-                       [2021, 9,  0.53, 2.0, 12.0, 25.0, 12.0, 25.0, 25.0],
-                       [2021, 10, 0.55, 2.0, 12.0, 25.0, 12.0, 25.0, 25.0]]
-
-    # DADO EXTERNO - matriz de bandeiras tarifárias ao longo do tempo
-    # ano, mês, bandeira
-    tariff_flags = [[2021, 6, 'AM'],
-                    [2021, 7, 'AM'],
-                    [2021, 8, 'AM'],
-                    [2021, 9, 'AM'],
-                    [2021, 10, 'V1']]
+    allPisCofins = TaxPisCofins.objects.all()
+    allIcms = TaxIcms.objects.all()
+    pis_cofins_icms = []
+    for pc in allPisCofins:
+        v = next((item for item in pis_cofins_icms if item[0] == pc.year and item[1] == pc.month), None)
+        pis, cofins = float(pc.value_pis), float(pc.value_cofins)
+        if v:
+            v[2], v[3] = pis, cofins
+        else:
+            v = [pc.year, pc.month, pis, cofins] + [0.0 for i in range(5)]
+            pis_cofins_icms.append(v)
+    for icms_db in allIcms:
+        v = next((item for item in pis_cofins_icms if item[0] == icms_db.year and item[1] == icms_db.month), None)
+        res1, res2 = float(icms_db.valueRes1), float(icms_db.valueRes2)
+        rur1, rur2, oth = float(icms_db.valueRur1), float(icms_db.valueRur2), float(icms_db.valueOther)
+        if v:
+            v[4], v[5], v[6], v[7], v[8] = res1, res2, rur1, rur2, oth
+        else:
+            v = [icms_db.year, icms_db.month, 0.0, 0.0] + [res1, res2, rur1, rur2, oth]
+            pis_cofins_icms.append(v)
 
     # determina tarifas sem imposto (R$/kWh)
     subgroup, subsubgroup = customer_type.split('_')[0].upper(), customer_type.split('_')[1]
@@ -134,22 +165,26 @@ def cost_conventional(data_list_energy_proj, customer_type, use_valid_flags, sim
     pis_cofins_icms_1 = next(item for item in pis_cofins_icms if item[0] == dt1_year and item[1] == dt1_month)
     pis_cofins_icms_2 = next(item for item in pis_cofins_icms if item[0] == dt2_year and item[1] == dt2_month)
 
-    # consulta últimas bandeiras vigentes para obter as bandeiras do PRO-RATA1 e do PRO-RATA2
-    flag_1, flag_2 = 'VD', 'VD'  # valores default
-    for fl in tariff_flags:
-        if fl[0] == dt1_year and fl[1] == dt1_month:
-            flag_1 = fl[2]
-        if fl[0] == dt2_year and fl[1] == dt2_month:
-            flag_2 = fl[2]
+    # determina o valor da bandeira da parte 1 e da parte 2
+    flag_value1, flag_value2 = 0.0, 0.0
+    if use_valid_flags:
+        for tf in allTariffFlags:
+            if tf.month == dt1_month and tf.year == dt1_year:
+                flag_value1 = float(tf.value)
+            if tf.month == dt2_month and tf.year == dt2_year:
+                flag_value2 = float(tf.value)
+    else:
+        flag_value1 = flag_tariffs[simulated_flag]
+        flag_value2 = flag_tariffs[simulated_flag]
 
     # montagem dos dados de tarifas, com a seguinte formatação:
     # datetime (1 por mês), tarifa, pis(%), cofins(%), icms_res1(%), icms_res2(%), icms_rur1(%), icms_rur2(%), icms_out(%), bandeira
     dt1, dt2 = datetime(dt1_year, dt1_month, 1, 0, 0, 0), datetime(dt2_year, dt2_month, 1, 0, 0, 0)
-    tariff_data = [[dt1, tariff_value] + pis_cofins_icms_1[2:] + [flag_1],
-                   [dt2, tariff_value] + pis_cofins_icms_2[2:] + [flag_2]]
+    tariff_data = [[dt1, tariff_value] + pis_cofins_icms_1[2:] + [flag_value1],
+                   [dt2, tariff_value] + pis_cofins_icms_2[2:] + [flag_value2]]
 
     # limites de icms para classe residencial (<= 150 e > 150 kWh) e classe rural (<= 500 e > 500 kWh)
-    icms_limits = [150.0, 500.0]
+    icms_kwh_limits = [150.0, 500.0]
 
     # função para cálculo da fatura
     dt_base = data_list_energy_proj[0][0]
@@ -161,45 +196,48 @@ def cost_conventional(data_list_energy_proj, customer_type, use_valid_flags, sim
     else: customer_class = 2  # outros
 
     # calcula a fatura total para medição da lista data_list_energy_proj
-    etot_accum_prorata1 = -1
     for i in range(len(data_list_energy_proj)):
         v = data_list_energy_proj[i]
         if i == 0:
             etot_accum_ini = v[1] + v[2] + v[3] + v[4]
             v.append(0.0)  # custo 0 para a medição inicial
             continue
-        # calcula as energias pro-rata1 (kWh durante o mês 1) e pro-rata2 (kWh durante o mês 2)
+
+        # consumo total no período
         etot_accum = v[1] + v[2] + v[3] + v[4]
-        if v[0].month == dt_base.month:
-            e_pro_rata1 = etot_accum - etot_accum_ini
-            e_pro_rata2 = 0.0
-        else:
-            if etot_accum_prorata1 == -1:
-                v_prev = data_list_energy_proj[i - 1]
-                etot_accum_prorata1 = v_prev[1] + v_prev[2] + v_prev[3] + v_prev[4]
-            e_pro_rata1 = etot_accum_prorata1 - etot_accum_ini
-            e_pro_rata2 = etot_accum - etot_accum_prorata1
+        etot_period = etot_accum - etot_accum_ini
 
-        # para energias pro-rata1 e pro-rata2, calcula partes 1 e 2
+        # número de dias de medição durante mês 1 e durante mês 2
+        days = (v[0] - dt_base).days + 1
+        if days == 0:
+            days, days_1, days_2 = 1, 1, 0
+        else:
+            if v[0].month > dt_base.month:
+                days_2 = v[0].day
+                days_1 = days - days_2
+            else:
+                days_2 = 0
+                days_1 = days
+
+        # obtém os limites de consumo para ICMS, para definir partes 1 e 2 do consumo
         if customer_class == 0:
-            icms_limit = icms_limits[0]
+            icms_kwh_limit = icms_kwh_limits[0]
         elif customer_class == 1:
-            icms_limit = icms_limits[1]
+            icms_kwh_limit = icms_kwh_limits[1]
         else:
-            icms_limit = 100000.0
+            icms_kwh_limit = 100000.0
 
-        if e_pro_rata1 <= icms_limit:
-            e_pro_rata1_p1 = e_pro_rata1
+        # calcula os consumos (partes 1 e 2) para pro-rata 1 e pro-rata 2
+        if etot_period <= icms_kwh_limit:
+            e_pro_rata1_p1 = etot_period * days_1 / (days_1 + days_2)
             e_pro_rata1_p2 = 0.0
-        else:
-            e_pro_rata1_p1 = icms_limit
-            e_pro_rata1_p2 = e_pro_rata1 - icms_limit
-        if e_pro_rata2 <= icms_limit:
-            e_pro_rata2_p1 = e_pro_rata2
+            e_pro_rata2_p1 = etot_period * days_2 / (days_1 + days_2)
             e_pro_rata2_p2 = 0.0
         else:
-            e_pro_rata2_p1 = icms_limit
-            e_pro_rata2_p2 = e_pro_rata2 - icms_limit
+            e_pro_rata1_p1 = icms_kwh_limit * days_1 / (days_1 + days_2)
+            e_pro_rata1_p2 = (etot_period - icms_kwh_limit) * days_1 / (days_1 + days_2)
+            e_pro_rata2_p1 = icms_kwh_limit * days_2 / (days_1 + days_2)
+            e_pro_rata2_p2 = (etot_period - icms_kwh_limit) * days_2 / (days_1 + days_2)
 
         # determina tarifa, PIS e COFINS relativas aos meses 1 e 2
         tariff_pis_cofins_1, tariff_pis_cofins_2 = None, None
@@ -208,81 +246,61 @@ def cost_conventional(data_list_energy_proj, customer_type, use_valid_flags, sim
                 tariff_pis_cofins_1 = t
             if t[0].year == v[0].year and t[0].month == v[0].month:
                 tariff_pis_cofins_2 = t
+            if tariff_pis_cofins_1 and tariff_pis_cofins_2:
+                break
 
         # calcula tarifa com impostos e bandeira com impostos
         if customer_class == 0:  # residencial
+            # custo relativo à tarifa
             tariff_pr1, tariff_pr2 = tariff_pis_cofins_1[1], tariff_pis_cofins_2[1]
-            pis_pr1, pis_pr2 = tariff_pis_cofins_1[2] / 100.0, tariff_pis_cofins_2[2] / 100.0
-            cofins_pr1, cofins_pr2 = tariff_pis_cofins_1[3] / 100.0, tariff_pis_cofins_2[3] / 100.0
-            icms_pr1_p1, icms_pr1_p2 = tariff_pis_cofins_1[4] / 100.0, tariff_pis_cofins_1[5] / 100.0
-            icms_pr2_p1, icms_pr2_p2 = tariff_pis_cofins_2[4] / 100.0, tariff_pis_cofins_2[5] / 100.0
+            pis, cofins = tariff_pis_cofins_2[2] / 100.0, tariff_pis_cofins_2[3] / 100.0
+            icms_p1, icms_p2 = tariff_pis_cofins_2[4] / 100.0, tariff_pis_cofins_2[5] / 100.0
             # tarifa com impostos para pro-rata1 (partes 1 e 2) e para pro-rata2 (partes 1 e 2)
-            tariffWithTaxes = [tariff_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
-                               tariff_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p2),
-                               tariff_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
-                               tariff_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p2)]
+            tariffWithTaxes = [tariff_pr1 / (1.0 - pis - cofins - icms_p1),
+                               tariff_pr1 / (1.0 - pis - cofins - icms_p2),
+                               tariff_pr2 / (1.0 - pis - cofins - icms_p1),
+                               tariff_pr2 / (1.0 - pis - cofins - icms_p2)]
 
-            if use_valid_flags:
-                flag_pr1 = flag_value(tariff_pis_cofins_1[9], flag_tariffs)
-                flag_pr2 = flag_value(tariff_pis_cofins_2[9], flag_tariffs)
-            else:
-                if simulated_flag is not None:
-                    flag_pr1 = flag_value(simulated_flag, flag_tariffs)
-                    flag_pr2 = flag_value(simulated_flag, flag_tariffs)
-                else:
-                    flag_pr1, flag_pr2 = 0.0, 0.0
+            # custo relativo à bandeira
+            flag_pr1, flag_pr2 = tariff_pis_cofins_1[9], tariff_pis_cofins_2[9]
             # bandeira com impostos para pro-rata1 (partes 1 e 2) e para pro-rata2 (partes 1 e 2)
-            flagWithTaxes = [flag_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
-                             flag_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p2),
-                             flag_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
-                             flag_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p2)]
+            flagWithTaxes = [flag_pr1 / (1.0 - pis - cofins - icms_p1),
+                             flag_pr1 / (1.0 - pis - cofins - icms_p2),
+                             flag_pr2 / (1.0 - pis - cofins - icms_p1),
+                             flag_pr2 / (1.0 - pis - cofins - icms_p2)]
         elif customer_class == 1:  # rural
+            # custo relativo à tarifa
             tariff_pr1, tariff_pr2 = tariff_pis_cofins_1[1], tariff_pis_cofins_2[1]
-            pis_pr1, pis_pr2 = tariff_pis_cofins_1[2] / 100.0, tariff_pis_cofins_2[2] / 100.0
-            cofins_pr1, cofins_pr2 = tariff_pis_cofins_1[3] / 100.0, tariff_pis_cofins_2[3] / 100.0
-            icms_pr1_p1, icms_pr1_p2 = tariff_pis_cofins_1[6] / 100.0, tariff_pis_cofins_1[7] / 100.0
-            icms_pr2_p1, icms_pr2_p2 = tariff_pis_cofins_2[6] / 100.0, tariff_pis_cofins_2[7] / 100.0
-            tariffWithTaxes = [tariff_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
-                               tariff_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p2),
-                               tariff_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
-                               tariff_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p2)]
+            pis, cofins = tariff_pis_cofins_2[2] / 100.0, tariff_pis_cofins_2[3] / 100.0
+            icms_p1, icms_p2 = tariff_pis_cofins_2[6] / 100.0, tariff_pis_cofins_2[7] / 100.0
+            tariffWithTaxes = [tariff_pr1 / (1.0 - pis - cofins - icms_p1),
+                               tariff_pr1 / (1.0 - pis - cofins - icms_p2),
+                               tariff_pr2 / (1.0 - pis - cofins - icms_p1),
+                               tariff_pr2 / (1.0 - pis - cofins - icms_p2)]
 
-            if use_valid_flags:
-                flag_pr1 = flag_value(tariff_pis_cofins_1[9], flag_tariffs)
-                flag_pr2 = flag_value(tariff_pis_cofins_2[9], flag_tariffs)
-            else:
-                if simulated_flag is not None:
-                    flag_pr1 = flag_value(simulated_flag, flag_tariffs)
-                    flag_pr2 = flag_value(simulated_flag, flag_tariffs)
-                else:
-                    flag_pr1, flag_pr2 = 0.0, 0.0
+            # custo relativo à bandeira
+            flag_pr1, flag_pr2 = tariff_pis_cofins_1[9], tariff_pis_cofins_2[9]
             # bandeira com impostos para pro-rata1 (partes 1 e 2) e para pro-rata2 (partes 1 e 2)
-            flagWithTaxes = [flag_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
-                             flag_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p2),
-                             flag_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
-                             flag_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p2)]
+            flagWithTaxes = [flag_pr1 / (1.0 - pis - cofins - icms_p1),
+                             flag_pr1 / (1.0 - pis - cofins - icms_p2),
+                             flag_pr2 / (1.0 - pis - cofins - icms_p1),
+                             flag_pr2 / (1.0 - pis - cofins - icms_p2)]
         else:  # outros
+            # custo relativo à tarifa
             tariff_pr1, tariff_pr2 = tariff_pis_cofins_1[1], tariff_pis_cofins_2[1]
-            pis_pr1, pis_pr2 = tariff_pis_cofins_1[2] / 100.0, tariff_pis_cofins_2[2] / 100.0
-            cofins_pr1, cofins_pr2 = tariff_pis_cofins_1[3] / 100.0, tariff_pis_cofins_2[3] / 100.0
-            icms_pr1_p1, icms_pr2_p1 = tariff_pis_cofins_1[8] / 100.0, tariff_pis_cofins_2[8] / 100.0
-            tariffWithTaxes = [tariff_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
+            pis, cofins = tariff_pis_cofins_2[2] / 100.0, tariff_pis_cofins_2[3] / 100.0
+            icms = tariff_pis_cofins_2[8] / 100.0
+            tariffWithTaxes = [tariff_pr1 / (1.0 - pis - cofins - icms),
                                0.0,
-                               tariff_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
+                               tariff_pr2 / (1.0 - pis - cofins - icms),
                                0.0]
-            if use_valid_flags:
-                flag_pr1 = flag_value(tariff_pis_cofins_1[9], flag_tariffs)
-                flag_pr2 = flag_value(tariff_pis_cofins_2[9], flag_tariffs)
-            else:
-                if simulated_flag is not None:
-                    flag_pr1 = flag_value(simulated_flag, flag_tariffs)
-                    flag_pr2 = flag_value(simulated_flag, flag_tariffs)
-                else:
-                    flag_pr1, flag_pr2 = 0.0, 0.0
+
+            # custo relativo à bandeira
+            flag_pr1, flag_pr2 = tariff_pis_cofins_1[9], tariff_pis_cofins_2[9]
             # bandeira com impostos para pro-rata1 (partes 1 e 2) e para pro-rata2 (partes 1 e 2)
-            flagWithTaxes = [flag_pr1 / (1.0 - pis_pr1 - cofins_pr1 - icms_pr1_p1),
+            flagWithTaxes = [flag_pr1 / (1.0 - pis - cofins - icms),
                              0.0,
-                             flag_pr2 / (1.0 - pis_pr2 - cofins_pr2 - icms_pr2_p1),
+                             flag_pr2 / (1.0 - pis - cofins - icms),
                              0.0]
 
         # cálculo da componente correspondente à tarifa, sem bandeira
