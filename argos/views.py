@@ -859,15 +859,17 @@ def detail(request, eui):
             #myData_dict = GetFromDaimon()
 
     #obtém data inicial e final dos dados recuperados
-    if len(myData_dict['logs']) > 1:
-        datetime_ini = myData_dict['logs'][0]['datetime_rx']
-        datetime_fin = myData_dict['logs'][len(myData_dict['logs'])-1]['datetime_rx']
-        timezone_info = datetime_ini.tzinfo
+    if (len(myData_dict['logs']) > 1):
+        if (datetime_ini == None and datetime_fin == None):
+            datetime_ini = myData_dict['logs'][0]['datetime_rx']
+            datetime_fin = myData_dict['logs'][len(myData_dict['logs'])-1]['datetime_rx']
+            # obtém datas no time zone correspondente
+            datetime_ini = datetime_ini.astimezone(pytz.timezone(settings.TIME_ZONE))
+            datetime_fin = datetime_fin.astimezone(pytz.timezone(settings.TIME_ZONE))
     else:
         #obtém data/hora atual e 24 h para trás, inserindo time zone
         datetime_fin = timezone.now()
         datetime_ini = datetime_fin + timedelta(days=-1)
-        timezone_info = None
 
     """
     Avalia o tipo de dispositivo
@@ -941,14 +943,9 @@ def detail(request, eui):
         data_list = list(zip(date_list, va_list, ia_list, vb_list, ib_list,
                              vc_list, ic_list, interval_list, dp_list_hex))
         #cria dicionário
-        if timezone_info == None:
-            values_dict = [{'datetime_rx':v[0].strftime('%d/%m/%Y %H:%M:%S'),
-                            'va':v[1], 'vb':v[3], 'vc':v[5], 'ia':v[2], 'ib':v[4],
-                            'ic':v[6], 'interval':v[7], 'data_payload':v[8]} for v in data_list]
-        else:
-            values_dict = [{'datetime_rx':v[0].astimezone(pytz.timezone(settings.TIME_ZONE)).strftime('%d/%m/%Y %H:%M:%S'),
-                            'va':v[1], 'vb':v[3], 'vc':v[5], 'ia':v[2], 'ib':v[4],
-                            'ic':v[6], 'interval':v[7], 'data_payload':v[8]} for v in data_list]
+        values_dict = [{'datetime_rx':v[0].astimezone(pytz.timezone(settings.TIME_ZONE)).strftime('%d/%m/%Y %H:%M:%S'),
+                        'va':v[1], 'vb':v[3], 'vc':v[5], 'ia':v[2], 'ib':v[4],
+                        'ic':v[6], 'interval':v[7], 'data_payload':v[8]} for v in data_list]
         #cria variável de contexto
         context = {
             'device': device,
@@ -1095,18 +1092,11 @@ def detail(request, eui):
                              batl_list, interval_list, dp_list, snr_list,
                              rssi_list))
         #cria dicionário de valores para plotar
-        if timezone_info == None:
-            values_dict = [{'datetime_rx': v[0].strftime('%d/%m/%Y %H:%M:%S'),
-                            'demC':v[1], 'pulseC':v[2], 'demG':v[3], 'pulseG':v[4],
-                            'lid':v[5], 'status':v[6], 'card_code':v[7], 'batl':v[8],
-                            'interval':v[9], 'data_payload': v[10],
-                            'snr':v[11], 'rssi':v[12]} for v in data_list]
-        else:
-            values_dict = [{'datetime_rx': v[0].astimezone(pytz.timezone(settings.TIME_ZONE)).strftime('%d/%m/%Y %H:%M:%S'),
-                            'demC':v[1], 'pulseC':v[2], 'demG':v[3], 'pulseG':v[4],
-                            'lid':v[5], 'status':v[6], 'card_code':v[7], 'batl':v[8],
-                            'interval':v[9], 'data_payload': v[10],
-                            'snr':v[11], 'rssi':v[12]} for v in data_list]
+        values_dict = [{'datetime_rx': v[0].astimezone(pytz.timezone(settings.TIME_ZONE)).strftime('%d/%m/%Y %H:%M:%S'),
+                        'demC':v[1], 'pulseC':v[2], 'demG':v[3], 'pulseG':v[4],
+                        'lid':v[5], 'status':v[6], 'card_code':v[7], 'batl':v[8],
+                        'interval':v[9], 'data_payload': v[10],
+                        'snr':v[11], 'rssi':v[12]} for v in data_list]
         #cria variável de contexto
         context = {
             'device': device,
@@ -1253,16 +1243,10 @@ def detail(request, eui):
         data_list = list(zip(date_list, temp_list, humid_list, batl_list,
                              interval_list, dp_list, snr_list, rssi_list))
         #cria dicionário de valores para plotar
-        if timezone_info == None:
-            values_dict = [{'datetime_rx':v[0].strftime('%d/%m/%Y %H:%M:%S'),
-                            'temp':v[1], 'humid':v[2], 'batl':v[3],
-                            'interval':v[4], 'data_payload':v[5], 'snr':v[6],
-                            'rssi':v[7]} for v in data_list]
-        else:
-            values_dict = [{'datetime_rx':v[0].astimezone(pytz.timezone(settings.TIME_ZONE)).strftime('%d/%m/%Y %H:%M:%S'),
-                            'temp':v[1], 'humid':v[2], 'batl':v[3],
-                            'interval':v[4], 'data_payload':v[5], 'snr':v[6],
-                            'rssi':v[7]} for v in data_list]
+        values_dict = [{'datetime_rx':v[0].astimezone(pytz.timezone(settings.TIME_ZONE)).strftime('%d/%m/%Y %H:%M:%S'),
+                        'temp':v[1], 'humid':v[2], 'batl':v[3],
+                        'interval':v[4], 'data_payload':v[5], 'snr':v[6],
+                        'rssi':v[7]} for v in data_list]
         #cria variável de contexto
         context = {
             'device': device,
@@ -1275,6 +1259,223 @@ def detail(request, eui):
             }
         response =  render(request, 'argos/' + editionName + '/detail5.html', context)
         #end tipo 5
+    
+    elif device.device_type.type_id == 6:
+        """
+        Dispositivo do tipo 6-Chave Fusível
+        """
+        batl_list = []
+        interval_list = []
+        fuseCurrent1 = []
+        fuseCurrent2 = []
+        fuseCurrent3 = []
+        voltageDetection = []
+        voltageDetectionValue = []
+        payloadHex_list = []
+        setValue1 = 450
+        setValue2 = 460
+        setValue3 = 480
+        
+        #Payloas Exemplo = '0D0FEF0D0FEF0D0FF10D07C00C0CD3'
+        #Corrente 1-> [2:6]
+        #Corrente 2-> [8:12]
+        #Corrente 3-> [14:18]
+        #Detecção de tensão-> [20:24]
+        #Bateria-> [26:30]
+
+        if myData_dict['data_format'] == 'base64':
+            #converte todos os data payloads para decimal
+            myData_dict['logs'] = [{
+                'datetime_rx': obj['datetime_rx'],
+                'data_payload': base64.b64decode(obj['data_payload']).hex().upper(),
+                'snr': obj['snr'],
+                'rssi': obj['rssi']
+                } for obj in myData_dict['logs']]
+        
+
+        for obj in myData_dict['logs']:
+            payloadHex_list.append(obj['data_payload'])
+            #Preenche lista para corrente no fusível 1
+            Temp = float.fromhex(obj['data_payload'][2:6])
+            if( (Temp - setValue1) < 0 ):
+                fuseCurrent1.append(0)
+            else:
+                fuseCurrent1.append(  (Temp - setValue1)/150  )
+            
+            #Preenche lista para corrente no fusível 2
+            Temp = float.fromhex(obj['data_payload'][8:12])
+            if( (Temp - setValue2) < 0 ):
+                fuseCurrent2.append(0)
+            else:
+                fuseCurrent2.append(  (Temp - setValue2)/150  )
+
+            #Preenche lista para corrente no fusível 3
+            Temp = float.fromhex(obj['data_payload'][14:18])
+            if( (Temp - setValue3) < 0 ):
+                fuseCurrent3.append(0)
+            else:
+                fuseCurrent3.append(  (Temp - setValue3)/150  )
+
+            #Preenche lista para detecção de tensão
+            Temp = float.fromhex(obj['data_payload'][20:24])
+            voltageDetectionValue.append(Temp)
+            if( Temp > 3600 or Temp < 500 ):
+                voltageDetection.append("OFF")
+            else:
+                voltageDetection.append("ON")
+
+            #Preenche lista para bateria
+            if len(obj['data_payload']) == 30:
+                batl_list.append(float.fromhex(obj['data_payload'][26:30])/1000)
+
+        date_list = [obj['datetime_rx'] for obj in myData_dict['logs']]
+        date_list2 = date_list.copy()
+        snr_list = [obj['snr'] for obj in myData_dict['logs']]
+        rssi_list = [obj['rssi'] for obj in myData_dict['logs']]
+
+        #proteção conta lista com menos de 2 objetos
+        if len(myData_dict['logs']) >= 2:
+            date_list.pop(0)
+            date_list2.pop()
+            snr_list.pop(0)
+            rssi_list.pop(0)
+            batl_list.pop(0)
+            fuseCurrent1.pop(0)
+            fuseCurrent2.pop(0)
+            fuseCurrent3.pop(0)
+            payloadHex_list.pop(0)
+            #cálculo de intervalo decorrido desde o último pacote
+            for k, l in zip(date_list, date_list2):
+                time_diff = k - l
+                minutes = time_diff.total_seconds()/60
+                interval_list.append(minutes)
+        else:
+            interval_list = [0,0]
+
+        #zipa listas
+        data_list = list(zip(date_list,snr_list,rssi_list,batl_list,interval_list,
+                            fuseCurrent1,fuseCurrent2,fuseCurrent3,voltageDetection,
+                            voltageDetectionValue,payloadHex_list))
+
+        #cria dict de valores para plotar
+        values_dict = [{
+            'datetime_rx': v[0].astimezone(pytz.timezone(settings.TIME_ZONE)).strftime('%d/%m/%Y %H:%M:%S'),
+            'snr': v[1],
+            'rssi': v[2],
+            'batl':v[3],
+            'interval':v[4],
+            'cf1':v[5],
+            'cf2':v[6],
+            'cf3':v[7],
+            'voltDetec':v[8],
+            'voltDetecValue':v[9],
+            'payloadHex':v[10],
+        } for v in data_list]
+
+        
+        #cria variável de contexto
+        context = {
+            'device': device,
+            'values': json.dumps(values_dict),
+            'device_type_list': device_types_tup,
+            'device_list': devices_tup,
+            'gateway_list': gateways_tup,
+            'datetime_ini' : datetime_ini.strftime('%Y-%m-%dT%H:%M'),
+            'datetime_fin' : datetime_fin.strftime('%Y-%m-%dT%H:%M')
+            }
+
+        response =  render(request, 'argos/' + editionName + '/detail6.html', context)
+
+    elif device.device_type.type_id == 7:
+        """
+        Dispositivo do tipo 7-Corrente MT
+        """
+        #batl_list = []
+        interval_list = []
+        phaseCurrentA = []
+        phaseCurrentB = []
+        phaseCurrentC = []
+        temperatureValue = []
+        payloadHex_list = []
+
+        if myData_dict['data_format'] == 'base64':
+            #converte todos os data payloads para decimal
+            myData_dict['logs'] = [{
+                'datetime_rx': obj['datetime_rx'],
+                'data_payload': base64.b64decode(obj['data_payload']).hex().upper(),
+                'snr': obj['snr'],
+                'rssi': obj['rssi']
+                } for obj in myData_dict['logs']]
+        
+        for obj in myData_dict['logs']:
+            if(len(obj['data_payload']) >= 22):
+                payloadHex_list.append(obj['data_payload'])
+                #Preenche lista para corrente fase A
+                phaseCurrentA.append((float.fromhex(obj['data_payload'][0:4]))/1000)
+                #Preenche lista para corrente fase B
+                phaseCurrentB.append((float.fromhex(obj['data_payload'][4:8]))/1000)
+                #Preenche lista para corrente fase C
+                phaseCurrentC.append((float.fromhex(obj['data_payload'][8:12]))/1000)
+                #Preenche lista para temperatura
+                temperatureValue.append((float.fromhex(obj['data_payload'][20:22]))*0.25+5)
+                #Preenche lista para bateria
+                #batl_list.append(float.fromhex(obj['data_payload'][18:20])*2.4+900)
+
+        date_list = [obj['datetime_rx'] for obj in myData_dict['logs']]
+        date_list2 = date_list.copy()
+        snr_list = [obj['snr'] for obj in myData_dict['logs']]
+        rssi_list = [obj['rssi'] for obj in myData_dict['logs']]
+
+        #proteção conta lista com menos de 2 objetos
+        if len(myData_dict['logs']) >= 2:
+            date_list.pop(0)
+            date_list2.pop()
+            snr_list.pop(0)
+            rssi_list.pop(0)
+            #batl_list.pop(0)
+            phaseCurrentA.pop(0)
+            phaseCurrentB.pop(0)
+            phaseCurrentC.pop(0)
+            temperatureValue.pop(0)
+            payloadHex_list.pop(0)
+            #cálculo de intervalo decorrido desde o último pacote
+            for k, l in zip(date_list, date_list2):
+                time_diff = k - l
+                minutes = time_diff.total_seconds()/60
+                interval_list.append(minutes)
+        else:
+            interval_list = [0,0]
+
+        #zipa listas
+        data_list = list(zip(date_list,snr_list,rssi_list,interval_list,
+                            phaseCurrentA,phaseCurrentB,phaseCurrentC,temperatureValue,payloadHex_list))
+
+        #cria dict de valores para plotar
+        values_dict = [{
+            'datetime_rx': v[0].astimezone(pytz.timezone(settings.TIME_ZONE)).strftime('%d/%m/%Y %H:%M:%S'),
+            'snr': v[1],
+            'rssi': v[2],
+            'interval':v[3],
+            'phaseCA':v[4],
+            'phaseCB':v[5],
+            'phaseCC':v[6],
+            'temp':v[7],
+            'payloadHex':v[8],
+        } for v in data_list]
+
+        
+        #cria variável de contexto
+        context = {
+            'device': device,
+            'values': json.dumps(values_dict),
+            'device_type_list': device_types_tup,
+            'device_list': devices_tup,
+            'gateway_list': gateways_tup,
+            'datetime_ini' : datetime_ini.strftime('%Y-%m-%dT%H:%M'),
+            'datetime_fin' : datetime_fin.strftime('%Y-%m-%dT%H:%M')
+            }
+
+        response =  render(request, 'argos/' + editionName + '/detail7.html',context)
 
     return response
 

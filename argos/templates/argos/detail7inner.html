@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    {% load static %}
+    {% block header %}
+
+    {% endblock %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/dc.css' %}">
+  </head>
+  <body>
+    {% block fixedtopbar %}
+
+    {% endblock %}
+
+    <div class="container-fluid" style="margin-top:80px">
+
+      {% if user.is_authenticated %}
+
+      <div class="row">
+
+        <!-- Barra de pesquisa e barra de navegação -->
+        {% include "argos/navsidebar.html" %}
+
+        <!-- Painel de navegação principal -->
+        <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
+
+          <div class="alert alert-dark font-weight-bold">Gráficos - {{ device.desc }} ({{ device.eui }})</div>
+
+          <!-- Abas dos gráficos -->
+          <ul class="nav nav-tabs">
+            
+              <li class="nav-item">
+              <a class="nav-link active" data-toggle="tab" href="#chart1">Corrente</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-toggle="tab" href="#chart2">Tempo</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-toggle="tab" href="#chart3">SNR e RSSI</a>
+            </li>
+          </ul>
+
+          <!-- Gráficos das diferentes abas -->
+          <div class="tab-content">
+            <div class="container tab-pane active" id="chart1">
+              <div class="row">
+                <div class="container" id="myChart1"></div>
+              </div>
+              <div class="row">
+                <div class="container" id="myRangeChart1"></div>
+              </div>
+            </div>
+            <div class="container tab-pane fade" id="chart2">
+              <div class="row">
+                <div class="container" id="myChart2"></div>
+              </div>
+              <div class="row">
+                <div class="container" id="myRangeChart2"></div>
+              </div>
+            </div>
+            <div class="container tab-pane fade" id="chart3">
+              <div class="row">
+                <div class="container" id="myChart3"></div>
+              </div>
+              <div class="row">
+                <div class="container" id="myRangeChart3"></div>
+              </div>
+            </div>
+          </div>
+
+          {% include "argos/formperiod.html" %}
+
+          <div class="alert alert-dark font-weight-bold" style="margin-top:30px">Tabelas de dados - {{ device.desc }} ({{ device.eui }})</div>
+
+          <!-- Abas das tabelas -->
+          <ul class="nav nav-tabs">
+            <li class="nav-item">
+              <a class="nav-link active" data-toggle="tab" href="#table1">Correntes</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-toggle="tab" href="#table2">Temperatura</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-toggle="tab" href="#table4">Informações dos Pacotes</a>
+            </li>
+          </ul>
+
+          <!-- Tabelas das diferentes abas -->
+          <div class="tab-content">
+            <div class="container tab-pane active" id="table1">
+              <div class="table-responsive">
+                <table class="table table-striped table-sm" id="myTable1" style="font-size:85%">
+                  <thead>
+                    <tr>
+                      <th scope="col">Data/Horário</th>
+                      <th scope="col">Corrente Fase A [A]</th>
+                      <th scope="col">Corrente Fase B [A]</th>
+                      <th scope="col">Corrente Fase C [A]</th>
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+            </div>
+            <div class="container tab-pane fade" id="table2">
+              <div class="table-responsive">
+                <table class="table table-striped table-sm" id="myTable2" style="font-size:85%">
+                  <thead>
+                    <tr>
+                      <th scope="col">Data/Horário</th>
+                      <th scope="col">Temperatura [ºC]</th>
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+            </div>
+            <div class="container tab-pane fade" id="table4">
+              <div class="table-responsive">
+                <table class="table table-striped table-sm" id="myTable4" style="font-size:85%">
+                  <thead>
+                    <tr>
+                      <th scope="col">Data/Horário</th>
+                      <th scope="col">Payload</th>
+                      <th scope="col">Intervalo [min]</th>
+                      <th scope="col">SNR</th>
+                      <th scope="col">RSSI [dbi]</th>
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Controles de paginação -->
+          <div style="padding-bottom: 20px">
+            <input id="id_previous" class="btn btn-secondary" type="button" value="<" />
+            <input id="id_next" class="btn btn-secondary" type="button" value=">" />
+            <input id="id_export" class="btn btn-secondary" type="button" value="Exportar Dados" />
+          </div>
+
+          {% block fixedbottombar %}
+          <!-- Aqui o template pode ser sobrescrito para incluir um fixedbottom bar diferente -->
+          {% endblock %}
+
+        </main>
+      </div>
+
+      {% else %}
+        <div class="alert alert-danger">Você não tem permissão para acessar esta página.</div>
+      {% endif %}
+    </div>
+
+    <script type="text/javascript" src="{% static 'js/jquery.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/bootstrap.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/crossfilter.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/d3.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/dc.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/argos.dc.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/argos.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/download.js' %}"></script>
+
+    <script>
+      //inicia dropdown
+      initDropdown();
+      /*
+      O bloco a seguir monta o gráfico e a tabela.
+      */
+      //formata configurações regionais (função original)
+      formatLocale();
+      //objeto json com dados
+      var valuesJson = {{ values|safe }};
+      //prepara dados
+      valuesJson.forEach(function(d) {
+        d.datetime_rx = parseTime(d.datetime_rx);
+      });
+      //preenche e exibe gráfico e tabela (ver argos.dc.js)
+      dcChartTable7(valuesJson, "#myChart1", "#myChart2", "#myChart3",
+                                "#myRangeChart1", "#myRangeChart2", "#myRangeChart3",
+                                "#myTable1", "#myTable2", "#myTable3", "#myTable4");
+
+      getSetScrollTop();
+    </script>
+  </body>
+</html>

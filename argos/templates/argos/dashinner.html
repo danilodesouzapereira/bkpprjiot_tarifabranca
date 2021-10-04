@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    {% load static %}
+    {% block header %}
+
+    {% endblock %}
+
+    <style>
+      @keyframes payload_blink {
+        from {
+          background-color: #ffffff;
+        }
+        to {
+          background-color: #bef3be;
+        }
+      }
+
+      p {
+        font-size: 70%;
+        margin-bottom: 7px;
+      }
+
+      h5 {
+        font-size: 90%;
+        margin-bottom: 10px;
+      }
+    </style>
+
+  </head>
+  <body>
+    {% block fixedtopbar %}
+
+    {% endblock %}
+    <div class="container" style="margin-top:75px">
+
+      {% if user.is_authenticated %}
+        <!-- Lista de tipos de dispositivos e seus dispositivos correspondentes -->
+        {% for device_type in device_type_list %}
+          <div class="alert alert-dark font-weight-bold" style="margin-top:15px">{{ device_type.0.desc }}:</div>
+
+          <div class="row text-center" style="padding-top:0px; padding-left:10px; padding-right:10px; padding-bottom:10px">
+            {% for device in device_list %}
+              {% if device.0.device_type.type_id == device_type.0.type_id and device.0.device_type.type_id == 1 %}
+                  {% include "argos/monitor1.html" %}
+              {% endif %}
+              {% if device.0.device_type.type_id == device_type.0.type_id and device.0.device_type.type_id == 2 %}
+                  {% include "argos/monitor2.html" %}
+              {% endif %}
+              {% if device.0.device_type.type_id == device_type.0.type_id and device.0.device_type.type_id == 3 %}
+                  {% include "argos/monitor3.html" %}
+              {% endif %}
+              {% if device.0.device_type.type_id == device_type.0.type_id and device.0.device_type.type_id == 4 %}
+                  {% include "argos/monitor4.html" %}
+              {% endif %}
+              {% if device.0.device_type.type_id == device_type.0.type_id and device.0.device_type.type_id == 5 %}
+                  {% include "argos/monitor5.html" %}
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endfor %}
+
+      {% else %}
+        <div class="alert alert-danger">Você não tem permissão para acessar esta página.</div>
+      {% endif %}
+
+      <p hidden id="is_admin">{{ is_admin }}</p>
+
+    </div>
+
+    {% block fixedbottombar %}
+    <!-- Aqui o template pode ser sobrescrito para incluir um fixedbottom bar diferente -->
+    {% endblock %}
+
+    <script type="text/javascript" src="{% static 'js/jquery.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/bootstrap.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/crossfilter.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/d3.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/dc.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/argos.dc.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/argos.js' %}"></script>
+
+    <script>
+      //formata configurações regionais
+      formatLocale();
+
+      //objeto json com dados do dispositivo
+      var devJson = {{ device_json|safe }};
+
+      //cria uma conexão por websocket com o django channels
+      var webSocketArgos = new WebSocket('ws://' + window.location.host + '/ws/argos/');
+
+      /*
+      O bloco a seguir foi comentado pois a Mauá desabilitará a REST API. Se obter
+      o último dado enviado for realmente importante, deverá ser implementada uma
+      REST API no servidor do Argos, uma vez que deveremos trabalhar sempre com
+      data_mode = 'local'
+      //listas de http resquests e http responses
+      var httpRequest = [];
+      var httpResponse =[];
+      //varre lista de dispositivos
+      for(i = 0; i < devJson.length; i++) {
+        //cria um http request
+        httpRequest[i] = new XMLHttpRequest();
+        //atribui um índice ao http request
+        httpRequest[i].ind = i;
+        //realiza as requisições http, conforme servidor do dispositivo
+        if (devJson[i]['server'] == 3) {
+          //requisição ao servidor Mauá (argumento true é para assíncrono e é o default)
+          httpRequest[i].open('GET','https://smartcampus.maua.br/api/index.php/' + devJson[i]['pwd'] + '/1/' + devJson[i]['eui'], true);
+        }
+
+        //define a função de callback do http request
+        httpRequest[i].onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+            httpReady(this.ind);
+          }
+        }
+        //realiza a requisição
+        httpRequest[i].send();
+      }
+      */
+      //função onclose
+      webSocketArgos.onclose = function(e) {
+        console.error('Websocket closed unexpectedly.');
+      };
+
+      //define função que deverá ser chamada toda vez que chegar uma mensagem
+      webSocketArgos.onmessage = function(e) {
+        var payload;
+        var data = JSON.parse(e.data);
+
+        /*
+        O bloco a seguir foi comentado pois a Mauá desabilitará a REST API. Se obter
+        o último dado enviado for realmente importante, deverá ser implementada uma
+        REST API no servidor do Argos, uma vez que deveremos trabalhar sempre com
+        data_mode = 'local'
+        //varre lista de dispositivos
+        for(i = 0; i < devJson.length; i++) {
+          //busca dispositivo referente ao pacote que acabou de chegar
+          if (devJson[i]['eui'] == data['message']['eui']) {
+            //indica que a atualização via http request não é mais necessária
+            devJson[i]['enabled'] = false;
+          }
+        }
+        */
+        //preenche elementos html com dados do objeto
+        if (data['message']['logs'].length > 0) {
+          //sensor de tensão e corrente
+          if (data['message']['device_type'] == 1) {
+            printDataMonitor1(data['message']);
+            blinkIt(data['message']['eui'], 6);
+          }
+          //remota para medidor de energia
+          else if (data['message']['device_type'] == 2) {
+            printDataMonitor2(data['message']);
+            blinkIt(data['message']['eui'], 6);
+          }
+          //rastreador GPS
+          else if (data['message']['device_type'] == 4) {
+            printDataMonitor4(data['message']);
+            blinkIt(data['message']['eui'], 6);
+          }
+          //sensor de temperatura e umidade
+          else if (data['message']['device_type'] == 5) {
+            printDataMonitor5(data['message']);
+            blinkIt(data['message']['eui'], 6);
+          }
+        }
+      };
+
+      //função onopen faz a subscrição no mqtt
+      webSocketArgos.onopen = function(event) {
+        var payload;
+        devJson.forEach(function (obj) {
+          webSocketArgos.send(JSON.stringify({
+            'message': {'type': 'subscribe', 'log': obj}
+          }));
+        })
+      };
+
+      //função de efeito visual para piscar um monitor quando houver atualização de dados
+      function blinkIt(device_eui, times) {
+        var id = 'monitor_' + device_eui.toUpperCase();
+        //numeroVezesSTR = String(numeroVezes)
+        //reseta animação
+        document.getElementById(id).style.animationName = 'none';
+        //faz piscar por algum tempo o monitor que foi atualizado
+        setTimeout(function() {
+          document.getElementById(id).style.animationName = 'payload_blink';
+          document.getElementById(id).style.animationDuration = '0.6s';
+          document.getElementById(id).style.animationIterationCount = times;
+          document.getElementById(id).style.animationDirection = 'alternate';
+        }, 150)
+      }
+
+      /*
+      O bloco a seguir foi comentado pois a Mauá desabilitará a REST API. Se obter
+      o último dado enviado for realmente importante, deverá ser implementada uma
+      REST API no servidor do Argos, uma vez que deveremos trabalhar sempre com
+      data_mode = 'local'
+      //função chamada quando o http request dá retorno
+      function httpReady(ind) {
+        var data = {};
+        //se dispositivo recebeu pacote via mqtt antes de chegar a resposta
+        //do http request, finaliza a execução da função
+        if (devJson[ind]['enabled'] == false) return;
+        //transforma a resposta da requisição de texto para JSON
+        httpResponse[ind] = JSON.parse(httpRequest[ind].responseText);
+        //arruma o JSON para o formato adequado das funções do argos, conforme o servidor
+        if (devJson[ind]['server'] == 3) {
+          //especifica formatadores de data
+          var pt = d3.timeParse('%Y-%m-%d %H:%M:%S.%f%Z');
+          var ft = d3.timeFormat('%d/%m/%Y %H:%M:%S.%f');
+          //requisição ao servidor Mauá (argumento true é para assíncrono e é o default)
+          data['message'] = {};
+          data['message']['data_format'] = devJson[ind]['rest_data_format'];
+          data['message']['eui'] = devJson[ind]['eui'];
+          data['message']['device_type'] = devJson[ind]['device_type'];
+          data['message']['server'] = devJson[ind]['server'];
+          data['message']['logs'] = [];
+          data['message']['logs'].push({
+            'datetime_rx': ft(pt(httpResponse[ind]['logs'][0]['created_at'])),
+            'data_payload': httpResponse[ind]['logs'][0]['data_payload']
+          });
+        }
+
+        //sensor de tensão e corrente
+        if (data['message']['device_type'] == 1) {
+          //nada a fazer por enquanto
+        }
+        //remota para medidor de energia
+        else if (data['message']['device_type'] == 2) {
+          printDataMonitor2(data['message']);
+          blinkIt(data['message']['eui'], 2);
+        }
+        //sensor de temperatura
+        else if (data['message']['device_type'] == 3) {
+          //nada a fazer por enquanto
+        }
+        //rastreador GPS
+        else if (data['message']['device_type'] == 4) {
+          printDataMonitor4(data['message']);
+          blinkIt(data['message']['eui'], 2);
+        }
+        //sensor de temperatura e umidade
+        else if (data['message']['device_type'] == 5) {
+          printDataMonitor5(data['message']);
+          blinkIt(data['message']['eui'], 2);
+        }
+      }
+      */
+      //função para desligar uma remota
+      function turnOff(eui) {
+        var commandJson = {
+          'message': {
+            'type': 'publish', 'log': {
+              'eui': eui.toLowerCase(),
+              'server': document.getElementById('server_' + eui).innerHTML,
+              'command': {
+                'reference': 'test-node-red',
+                'confirmed': false,
+                'fPort': 100,
+                'data': 'AAQ='
+              }
+            }
+          }
+        };
+        webSocketArgos.send(JSON.stringify(commandJson));
+        document.getElementById('turnOff_' + eui).disabled = true;
+      }
+
+      //função para ligar uma remota
+      function turnOn(eui) {
+        var commandJson = {
+          'message': {
+            'type': 'publish', 'log': {
+              'eui': eui.toLowerCase(),
+              'server': document.getElementById('server_' + eui).innerHTML,
+              'command': {
+                'reference': 'test-node-red',
+                'confirmed': false,
+                'fPort': 100,
+                'data': 'AAg='
+              }
+            }
+          }
+        };
+        webSocketArgos.send(JSON.stringify(commandJson));
+        document.getElementById('turnOn_' + eui).disabled = true;
+      }
+
+      resetScrollTop();
+
+    </script>
+  </body>
+</html>

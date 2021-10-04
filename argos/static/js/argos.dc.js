@@ -1276,14 +1276,734 @@ function dcChartTable5 (valuesJson,
   document.getElementById('id_previous').addEventListener('click', previous, false);
 }
 
+//função para preencher um gráfico e uma tabela passados como parâmetro
+//dispositivo tipo 6 - sensor chave fusível
+function dcChartTable6(valuesJson,
+  dcChartName1, dcChartName2, dcChartName3,
+  dcRangeChartName1, dcRangeChartName2, dcRangeChartName3,
+  dcTableName1, dcTableName2, dcTableName3, dcTableName4) {
+  //configura esquema de cores do gráfico
+  dc.config.defaultColors(d3.schemeCategory10);
+  //variável para guardar demanda máxima
+  var maxD = 0;
+  //proteção contra objetos com menos de 2 registros
+  if (valuesJson.length < 2) return;
+  //determina valor máximo de cada dimensão
+  var maxV = valuesJson.reduce(function (max, d) { return (d.batl > max) ? d.batl : max; }, 0);
+  var maxTime = valuesJson.reduce(function (max, d) { return (d.interval > max) ? d.interval : max; }, 0);
+  var maxcf1 = valuesJson.reduce(function (max, d) { return (d.cf1 > max) ? d.cf1 : max; }, 0);
+  var maxcf2 = valuesJson.reduce(function (max, d) { return (d.cf2 > max) ? d.cf2 : max; }, 0);
+  var maxcf3 = valuesJson.reduce(function (max, d) { return (d.cf3 > max) ? d.cf3 : max; }, 0);
+  if (maxcf1 > maxD) maxD = maxcf1;
+  if (maxcf2 > maxD) maxD = maxcf2;
+  if (maxcf3 > maxD) maxD = maxcf3;
+  //determina valores máximo e mínimo de SNR e RSSI
+  var maxSNR = valuesJson.reduce(function (max, d) { return (d.snr > max) ? d.snr : max; }, 0);
+  var maxRSSI = valuesJson.reduce(function (max, d) { return (d.rssi > max) ? d.rssi : max; }, 0);
+  var minSNR = valuesJson.reduce(function (min, d) { return (d.snr < min) ? d.snr : min; }, 0);
+  var minRSSI = valuesJson.reduce(function (min, d) { return (d.rssi < min) ? d.rssi : min; }, 0);
+  //cria instância do crossfilter
+  var ndx = crossfilter(valuesJson);
+  //define uma dimensão (o que vai no eixo x)
+  var timeDim = ndx.dimension(function (d) { return d.datetime_rx; });
+  //define os grupos (o que vai no eixo y)
+  var cf1Group = timeDim.group().reduceSum(function (d) { return d.cf1; });
+  var cf2Group = timeDim.group().reduceSum(function (d) { return d.cf2; });
+  var cf3Group = timeDim.group().reduceSum(function (d) { return d.cf3; });
+  var batlGroup = timeDim.group().reduceSum(function (d) { return d.batl; });
+  var timeGroup = timeDim.group().reduceSum(function (d) { return d.interval; });
+  var snrGroup = timeDim.group().reduceSum(function (d) { return d.snr; });
+  var rssiGroup = timeDim.group().reduceSum(function (d) { return d.rssi; });
+  //define limites
+  var minDate = timeDim.bottom(1)[0]['datetime_rx'];
+  var maxDate = timeDim.top(1)[0]['datetime_rx'];
+  //cria 3 gráficos para servir de rangeChart (filtro)
+  var dcRangeChart1 = dc.lineChart(dcRangeChartName1);
+  //define rangeChart
+  dcRangeChart1
+    .useViewBoxResizing(true)
+    .margins({ top: 5, right: 20, bottom: 25, left: 76 })
+    .dimension(timeDim)
+    .group(cf1Group)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    .y(d3.scaleLinear().domain([0, 1.1 * maxD]))
+    .renderArea(true)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .transitionDuration(500);
+  var dcRangeChart2 = dc.lineChart(dcRangeChartName2);
+  //define rangeChart
+  dcRangeChart2
+    .useViewBoxResizing(true)
+    .margins({ top: 5, right: 68, bottom: 25, left: 76 })
+    .dimension(timeDim)
+    .group(batlGroup)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    .y(d3.scaleLinear().domain([0, 1.1 * maxV]))
+    .renderArea(true)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .transitionDuration(500);
+  var dcRangeChart3 = dc.lineChart(dcRangeChartName3);
+  //define rangeChart
+  dcRangeChart3
+    .useViewBoxResizing(true)
+    .margins({ top: 5, right: 68, bottom: 25, left: 76 })
+    .dimension(timeDim)
+    .group(batlGroup)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    .y(d3.scaleLinear().domain([1.1 * minSNR, 1.1 * maxSNR]))
+    .renderArea(true)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .transitionDuration(500);
+
+  //cria 3 gráficos compostos
+  var dcChart1 = dc.compositeChart(dcChartName1);
+  var dcChart2 = dc.compositeChart(dcChartName2);
+  var dcChart3 = dc.compositeChart(dcChartName3);
+
+  //cria gráfico para cada grupo
+  //gráfico da Corrente no Fusível 1
+  var dcChartCF1 = dc.lineChart(dcChart1);
+  dcChartCF1
+    .group(cf1Group, 'Corrente no Fusível 1 [A]')
+    .colors('blue');
+  //gráfico da Corrente no Fusível 2
+  var dcChartCF2 = dc.lineChart(dcChart1);
+  dcChartCF2
+    .group(cf2Group, 'Corrente no Fusível 2 [A]')
+    .colors('orange');
+  //gráfico da Corrente no Fusível 3
+  var dcChartCF3 = dc.lineChart(dcChart1);
+  dcChartCF3
+    .group(cf3Group, 'Corrente no Fusível 3 [A]')
+    .colors('purple');
+  //gráfico do nível da bateria
+  var dcChartV = dc.lineChart(dcChart2);
+  dcChartV
+    .group(batlGroup, 'Nível da Bateria [V]')
+    .colors('green');
+  //gráfico do tempo desde o último envio
+  var dcChartTime = dc.lineChart(dcChart2);
+  dcChartTime
+    .group(timeGroup, 'Tempo desde o último envio [min]')
+    .colors('red')
+    .useRightYAxis(true);
+  //gráfico do SNR
+  var dcChartSNR = dc.lineChart(dcChart3);
+  dcChartSNR
+    .group(snrGroup, 'SNR')
+    .colors('green');
+  //gráfico do RSSI
+  var dcChartRSSI = dc.lineChart(dcChart3);
+  dcChartRSSI
+    .group(rssiGroup, 'RSSI [dbi]')
+    .colors('red')
+    .useRightYAxis(true);
+
+  //define gráficos
+  dcChart1
+    .useViewBoxResizing(true)
+    .margins({ top: 30, right: 20, bottom: 30, left: 60 })
+    .dimension(timeDim)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    .y(d3.scaleLinear().domain([0, 1.1 * maxD]))
+    .brushOn(false)
+    .transitionDuration(500)
+    .mouseZoomable(false)
+    .rangeChart(dcRangeChart1)
+    .yAxisLabel('Corrente [A]', 16)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .title(function (d) {
+      return formatTime(d.key) + ':\n' + formatNumber(d.value, 2);
+    });
+  dcChart2
+    .useViewBoxResizing(true)
+    .margins({ top: 30, right: 65, bottom: 30, left: 60 })
+    .dimension(timeDim)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    .y(d3.scaleLinear().domain([0, 1.1 * maxV]))
+    .rightY(d3.scaleLinear().domain([0, 1.1 * maxTime]))
+    .brushOn(false)
+    .transitionDuration(500)
+    .mouseZoomable(false)
+    .rangeChart(dcRangeChart2)
+    .yAxisLabel('Nível da Bateria [V]', 16)
+    .rightYAxisLabel('Tempo [min]', 16)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .title(function (d) {
+      return formatTime(d.key) + ':\n' + formatNumber(d.value, 2);
+    });
+  dcChart3
+    .useViewBoxResizing(true)
+    .margins({ top: 30, right: 65, bottom: 30, left: 60 })
+    .dimension(timeDim)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    .y(d3.scaleLinear().domain([1.1 * minSNR, 1.1 * maxSNR]))
+    .rightY(d3.scaleLinear().domain([1.1 * minRSSI, 1.1 * maxRSSI]))
+    .brushOn(false)
+    .transitionDuration(500)
+    .mouseZoomable(false)
+    .rangeChart(dcRangeChart3)
+    .yAxisLabel('SNR', 16)
+    .rightYAxisLabel('RSSI [dbi]', 16)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .title(function (d) {
+      return formatTime(d.key) + ':\n' + formatNumber(d.value, 2);
+    });
+
+  //compôe todas as curvas nos gráficos compostos
+  dcChart1.compose([dcChartCF1, dcChartCF2, dcChartCF3]);
+  dcChart2.compose([dcChartV, dcChartTime]);
+  dcChart3.compose([dcChartSNR, dcChartRSSI]);
+
+  //cria uma dimensão para as tabelas
+  var allDim = ndx.dimension(function (d) { return d; });
+
+  //cria tabelas
+  var dcTable1 = dc.dataTable(dcTableName1);
+  var dcTable2 = dc.dataTable(dcTableName2);
+  var dcTable3 = dc.dataTable(dcTableName3);
+  var dcTable4 = dc.dataTable(dcTableName4);
+
+  //define as tabelas
+  dcTable1
+    .dimension(allDim)
+    .group(function (d) { return ''; })
+    .showGroups(false)
+    .sortBy(function (d) { return d.datetime_rx; })
+    .order(d3.descending)
+    .size(Infinity);
+  dcTable2
+    .dimension(allDim)
+    .group(function (d) { return ''; })
+    .showGroups(false)
+    .sortBy(function (d) { return d.datetime_rx; })
+    .order(d3.descending)
+    .size(Infinity);
+  dcTable3
+    .dimension(allDim)
+    .group(function (d) { return ''; })
+    .showGroups(false)
+    .sortBy(function (d) { return d.datetime_rx; })
+    .order(d3.descending)
+    .size(Infinity);
+  dcTable4
+    .dimension(allDim)
+    .group(function (d) { return ''; })
+    .showGroups(false)
+    .sortBy(function (d) { return d.datetime_rx; })
+    .order(d3.descending)
+    .size(Infinity);
+
+  //define as colunas que as tabelas devem exibir
+  dcTable1
+    .columns([
+      function (d) { return formatTime(d.datetime_rx); },
+      function (d) { return formatNumber(d.cf1); },
+      function (d) { return formatNumber(d.cf2); },
+      function (d) { return formatNumber(d.cf3); },
+    ]);
+  dcTable2
+    .columns([
+      function (d) { return formatTime(d.datetime_rx); },
+      function (d) { return formatNumber(d.voltDetecValue); },
+      function (d) { return formatNumber(d.voltDetec); },
+    ]);
+  dcTable3
+    .columns([
+      function (d) { return formatTime(d.datetime_rx); },
+      function (d) { return formatNumber(d.batl); }
+    ]);
+  dcTable4
+    .columns([
+      function (d) { return formatTime(d.datetime_rx); },
+      function (d) { return d.payloadHex; },
+      function (d) { return formatNumber(d.interval); },
+      function (d) { return formatNumber(d.snr); },
+      function (d) { return formatNumber(d.rssi); }
+    ]);
+
+  //variáveis para paginação das tabelas
+  var offset = 0;
+  var recs = window.innerHeight / 50;
+  //render chart and table
+  renderChartTable();
+  //função para exportar os dados visualizados em uma determinada página
+  function exportData() {
+    download(d3.csvFormat(ndx.all()), 'deviceData.csv', 'text/plain');
+  }
+  //função para habilitar desabilitar botões
+  function display() {
+    d3.select('#id_next')
+      .attr('disabled', (offset + recs) >= ndx.groupAll().reduceCount().value() ? 'true' : null);
+    d3.select('#id_previous')
+      .attr('disabled', offset <= 0 ? 'true' : null);
+  }
+  //função para atualizar paginação das tabelas
+  function update() {
+    dcTable1.beginSlice(offset); dcTable2.beginSlice(offset);
+    dcTable3.beginSlice(offset); dcTable4.beginSlice(offset);
+    dcTable1.endSlice(offset + recs); dcTable2.endSlice(offset + recs);
+    dcTable3.endSlice(offset + recs); dcTable4.endSlice(offset + recs);
+    display();
+  }
+  //função para ir para a próxima página das tabelas
+  function next() {
+    offset += recs;
+    update();
+    dcTable1.redraw(); dcTable2.redraw(); dcTable3.redraw(); dcTable4.redraw();
+  }
+  //função para ir para a página anterior das tabelas
+  function previous() {
+    offset -= recs;
+    if (offset < 0) offset = 0;
+    update();
+    dcTable1.redraw(); dcTable2.redraw(); dcTable3.redraw(); dcTable4.redraw();
+  }
+  //function to render chart and table
+  function renderChartTable() {
+    //define razão largura/altura para gráfico
+    var ratio = 2.4;
+    //define proporção de altura entre chart e rangeChart
+    var prop = 0.1;
+    //variáveis para altura e largura
+    var height;
+    var width;
+    //redefine número de registros para paginação da tabela em função da altura
+    recs = Math.round(window.innerHeight / 50);
+    //atualiza tabela
+    update();
+    //define propriedades dos gráficos
+    width = document.getElementById('myChart1').clientWidth;
+    if (document.getElementById('myChart2').clientWidth > width) {
+      width = document.getElementById('myChart2').clientWidth;
+    }
+    if (document.getElementById('myChart3').clientWidth > width) {
+      width = document.getElementById('myChart3').clientWidth;
+    }
+    height = Math.round(prop * width / ratio);
+    height = (height >= 50) ? height : 50;
+    dcRangeChart1.width(width); dcRangeChart2.width(width); dcRangeChart3.width(width);
+    dcRangeChart1.height(height); dcRangeChart2.height(height); dcRangeChart3.height(height);
+    dcRangeChart1.xAxis().ticks(Math.round(dcRangeChart1.width() / 190));
+    dcRangeChart2.xAxis().ticks(Math.round(dcRangeChart2.width() / 190));
+    dcRangeChart3.xAxis().ticks(Math.round(dcRangeChart3.width() / 190));
+    dcRangeChart1.yAxis().ticks(Math.round(dcRangeChart1.height() / 130));
+    dcRangeChart2.yAxis().ticks(Math.round(dcRangeChart2.height() / 130));
+    dcRangeChart3.yAxis().ticks(Math.round(dcRangeChart3.height() / 130));
+    height = Math.round(width / ratio) - dcRangeChart1.height();
+    height = (height >= 200) ? height : 200;
+    dcChart1.width(width); dcChart2.width(width); dcChart3.width(width);
+    dcChart1.height(height); dcChart2.height(height); dcChart3.height(height);
+    dcChartCF1.width(width);
+    dcChartCF2.width(width);
+    dcChartCF3.width(width);
+    dcChartV.width(width);
+    dcChartTime.width(width);
+    dcChartCF1.height(height);
+    dcChartCF2.height(height);
+    dcChartCF3.height(height);
+    dcChartV.height(height);
+    dcChartTime.height(height);
+    dcChartSNR.height(height);
+    dcChartRSSI.height(height);
+    dcChart1.xAxis().ticks(Math.round(dcChart1.width() / 190));
+    dcChart2.xAxis().ticks(Math.round(dcChart2.width() / 190));
+    dcChart3.xAxis().ticks(Math.round(dcChart3.width() / 190));
+    dcChart1.yAxis().ticks(Math.round(dcChart1.height() / 130));
+    dcChart2.yAxis().ticks(Math.round(dcChart2.height() / 130));
+    dcChart3.yAxis().ticks(Math.round(dcChart3.height() / 130));
+    dcChart1.yAxis().tickFormat(d3.format('~s'));
+    dcChart1.legend(dc.legend().x(80).y(height - 85).itemHeight(13).gap(5).horizontal(false).legendWidth(140).itemWidth(70));
+    dcChart2.legend(dc.legend().x(80).y(height - 65).itemHeight(13).gap(5).horizontal(false).legendWidth(140).itemWidth(70));
+    dcChart3.legend(dc.legend().x(80).y(height - 65).itemHeight(13).gap(5).horizontal(false).legendWidth(140).itemWidth(70));
+    dc.renderAll();
+  }
+  //render the chart again after onresize event
+  document.getElementsByTagName('BODY')[0].onresize = function () { renderChartTable(); };
+  //adiciona evento onclick aos botões id_next e id_previous
+  document.getElementById('id_next').addEventListener('click', next, false);
+  document.getElementById('id_previous').addEventListener('click', previous, false);
+  //adiciona evento onclick ao botão id_export
+  document.getElementById('id_export').addEventListener('click', exportData, false);
+}
+
+//função para preencher um gráfico e uma tabela passados como parâmetro
+//dispositivo tipo 7 - sensor corrente MT
+function dcChartTable7(valuesJson,
+  dcChartName1, dcChartName2, dcChartName3,
+  dcRangeChartName1, dcRangeChartName2, dcRangeChartName3,
+  dcTableName1, dcTableName2, dcTableName3, dcTableName4) {
+  //configura esquema de cores do gráfico
+  dc.config.defaultColors(d3.schemeCategory10);
+  //variável para guardar demanda máxima
+  var maxD = 0;
+  //proteção contra objetos com menos de 2 registros
+  if (valuesJson.length < 2) return;
+  //determina valor máximo de cada dimensão
+  //var maxV = valuesJson.reduce(function (max, d) { return (d.batl > max) ? d.batl : max; }, 0);
+  var maxTime = valuesJson.reduce(function (max, d) { return (d.interval > max) ? d.interval : max; }, 0);
+  var maxPhaseCurrentA = valuesJson.reduce(function (max, d) { return (d.phaseCA > max) ? d.phaseCA : max; }, 0);
+  var maxPhaseCurrentB = valuesJson.reduce(function (max, d) { return (d.phaseCB > max) ? d.phaseCB : max; }, 0);
+  var maxPhaseCurrentC = valuesJson.reduce(function (max, d) { return (d.phaseCC > max) ? d.phaseCC : max; }, 0);
+  if (maxPhaseCurrentA > maxD) maxD = maxPhaseCurrentA;
+  if (maxPhaseCurrentB > maxD) maxD = maxPhaseCurrentB;
+  if (maxPhaseCurrentC > maxD) maxD = maxPhaseCurrentC;
+  //determina valores máximo e mínimo de SNR e RSSI
+  var maxSNR = valuesJson.reduce(function (max, d) { return (d.snr > max) ? d.snr : max; }, 0);
+  var maxRSSI = valuesJson.reduce(function (max, d) { return (d.rssi > max) ? d.rssi : max; }, 0);
+  var minSNR = valuesJson.reduce(function (min, d) { return (d.snr < min) ? d.snr : min; }, 0);
+  var minRSSI = valuesJson.reduce(function (min, d) { return (d.rssi < min) ? d.rssi : min; }, 0);
+  //cria instância do crossfilter
+  var ndx = crossfilter(valuesJson);
+  //define uma dimensão (o que vai no eixo x)
+  var timeDim = ndx.dimension(function (d) { return d.datetime_rx; });
+  //define os grupos (o que vai no eixo y)
+  var phaseCurrentAGroup = timeDim.group().reduceSum(function (d) { return d.phaseCA; });
+  var phaseCurrentBGroup = timeDim.group().reduceSum(function (d) { return d.phaseCB; });
+  var phaseCurrentCGroup = timeDim.group().reduceSum(function (d) { return d.phaseCC; });
+  //var batlGroup = timeDim.group().reduceSum(function (d) { return d.batl; });
+  var timeGroup = timeDim.group().reduceSum(function (d) { return d.interval; });
+  var snrGroup = timeDim.group().reduceSum(function (d) { return d.snr; });
+  var rssiGroup = timeDim.group().reduceSum(function (d) { return d.rssi; });
+  //define limites
+  var minDate = timeDim.bottom(1)[0]['datetime_rx'];
+  var maxDate = timeDim.top(1)[0]['datetime_rx'];
+  //cria 3 gráficos para servir de rangeChart (filtro)
+  var dcRangeChart1 = dc.lineChart(dcRangeChartName1);
+  //define rangeChart
+  dcRangeChart1
+    .useViewBoxResizing(true)
+    .margins({ top: 5, right: 20, bottom: 25, left: 76 })
+    .dimension(timeDim)
+    .group(phaseCurrentAGroup)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    .y(d3.scaleLinear().domain([0, 1.1 * maxD]))
+    .renderArea(true)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .transitionDuration(500);
+  var dcRangeChart2 = dc.lineChart(dcRangeChartName2);
+  //define rangeChart
+  dcRangeChart2
+    .useViewBoxResizing(true)
+    .margins({ top: 5, right: 68, bottom: 25, left: 76 })
+    .dimension(timeDim)
+    //.group(batlGroup)
+    .group(timeGroup)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    //.y(d3.scaleLinear().domain([0, 1.1 * maxV]))
+    .y(d3.scaleLinear().domain([0, 1.1 * maxTime]))
+    .renderArea(true)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .transitionDuration(500);
+  var dcRangeChart3 = dc.lineChart(dcRangeChartName3);
+  //define rangeChart
+  dcRangeChart3
+    .useViewBoxResizing(true)
+    .margins({ top: 5, right: 68, bottom: 25, left: 76 })
+    .dimension(timeDim)
+    //.group(batlGroup)
+    .group(snrGroup)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    .y(d3.scaleLinear().domain([1.1 * minSNR, 1.1 * maxSNR]))
+    .renderArea(true)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .transitionDuration(500);
+
+  //cria 3 gráficos compostos
+  var dcChart1 = dc.compositeChart(dcChartName1);
+  var dcChart2 = dc.compositeChart(dcChartName2);
+  var dcChart3 = dc.compositeChart(dcChartName3);
+
+  //cria gráfico para cada grupo
+  //gráfico da Corrente no Fusível 1
+  var dcChartFCA = dc.lineChart(dcChart1);
+  dcChartFCA
+    .group(phaseCurrentAGroup, 'Corrente fase A [A]')
+    .colors('blue');
+  //gráfico da Corrente no Fusível 2
+  var dcChartFCB = dc.lineChart(dcChart1);
+  dcChartFCB
+    .group(phaseCurrentBGroup, 'Corrente fase B [A]')
+    .colors('orange');
+  //gráfico da Corrente no Fusível 3
+  var dcChartFCC = dc.lineChart(dcChart1);
+  dcChartFCC
+    .group(phaseCurrentCGroup, 'Corrente fase C [A]')
+    .colors('purple');
+  //gráfico do nível da bateria
+  /*var dcChartV = dc.lineChart(dcChart2);
+  dcChartV
+    .group(batlGroup, 'Nível da Bateria [V]')
+    .colors('green');
+    */
+  //gráfico do tempo desde o último envio
+  var dcChartTime = dc.lineChart(dcChart2);
+  dcChartTime
+    .group(timeGroup, 'Tempo desde o último envio [min]')
+    .colors('red')
+    //.useRightYAxis(true);
+  //gráfico do SNR
+  var dcChartSNR = dc.lineChart(dcChart3);
+  dcChartSNR
+    .group(snrGroup, 'SNR')
+    .colors('green');
+  //gráfico do RSSI
+  var dcChartRSSI = dc.lineChart(dcChart3);
+  dcChartRSSI
+    .group(rssiGroup, 'RSSI [dbi]')
+    .colors('red')
+    .useRightYAxis(true);
+
+  //define gráficos
+  dcChart1
+    .useViewBoxResizing(true)
+    .margins({ top: 30, right: 20, bottom: 30, left: 60 })
+    .dimension(timeDim)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    .y(d3.scaleLinear().domain([0, 1.1 * maxD]))
+    .brushOn(false)
+    .transitionDuration(500)
+    .mouseZoomable(false)
+    .rangeChart(dcRangeChart1)
+    .yAxisLabel('Corrente [A]', 16)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .title(function (d) {
+      return formatTime(d.key) + ':\n' + formatNumber(d.value, 2);
+    });
+  dcChart2
+    .useViewBoxResizing(true)
+    .margins({ top: 30, right: 65, bottom: 30, left: 60 })
+    .dimension(timeDim)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    //.y(d3.scaleLinear().domain([0, 1.1 * maxV]))
+    //.rightY(d3.scaleLinear().domain([0, 1.1 * maxTime]))
+    .y(d3.scaleLinear().domain([0, 1.1 * maxTime]))
+    .brushOn(false)
+    .transitionDuration(500)
+    .mouseZoomable(false)
+    .rangeChart(dcRangeChart2)
+    //.yAxisLabel('Nível da Bateria [V]', 16)
+    .yAxisLabel('Tempo [min]', 16)
+    //.rightYAxisLabel('Tempo [min]', 16)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .title(function (d) {
+      return formatTime(d.key) + ':\n' + formatNumber(d.value, 1);
+    });
+  dcChart3
+    .useViewBoxResizing(true)
+    .margins({ top: 30, right: 65, bottom: 30, left: 60 })
+    .dimension(timeDim)
+    .x(d3.scaleTime().domain([minDate, maxDate]))
+    .y(d3.scaleLinear().domain([1.1 * minSNR, 1.1 * maxSNR]))
+    .rightY(d3.scaleLinear().domain([1.1 * minRSSI, 1.1 * maxRSSI]))
+    .brushOn(false)
+    .transitionDuration(500)
+    .mouseZoomable(false)
+    .rangeChart(dcRangeChart3)
+    .yAxisLabel('SNR', 16)
+    .rightYAxisLabel('RSSI [dbi]', 16)
+    .renderHorizontalGridLines(true)
+    .renderVerticalGridLines(true)
+    .title(function (d) {
+      return formatTime(d.key) + ':\n' + formatNumber(d.value, 2);
+    });
+
+  //compôe todas as curvas nos gráficos compostos
+  dcChart1.compose([dcChartFCA, dcChartFCB, dcChartFCC]);
+  //dcChart2.compose([dcChartV, dcChartTime]);
+  dcChart2.compose([dcChartTime]);
+  dcChart3.compose([dcChartSNR, dcChartRSSI]);
+
+  //cria uma dimensão para as tabelas
+  var allDim = ndx.dimension(function (d) { return d; });
+
+  //cria tabelas
+  var dcTable1 = dc.dataTable(dcTableName1);
+  var dcTable2 = dc.dataTable(dcTableName2);
+  var dcTable3 = dc.dataTable(dcTableName3);
+  var dcTable4 = dc.dataTable(dcTableName4);
+
+  //define as tabelas
+  dcTable1
+    .dimension(allDim)
+    .group(function (d) { return ''; })
+    .showGroups(false)
+    .sortBy(function (d) { return d.datetime_rx; })
+    .order(d3.descending)
+    .size(Infinity);
+  dcTable2
+    .dimension(allDim)
+    .group(function (d) { return ''; })
+    .showGroups(false)
+    .sortBy(function (d) { return d.datetime_rx; })
+    .order(d3.descending)
+    .size(Infinity);
+  dcTable3
+    .dimension(allDim)
+    .group(function (d) { return ''; })
+    .showGroups(false)
+    .sortBy(function (d) { return d.datetime_rx; })
+    .order(d3.descending)
+    .size(Infinity);
+  dcTable4
+    .dimension(allDim)
+    .group(function (d) { return ''; })
+    .showGroups(false)
+    .sortBy(function (d) { return d.datetime_rx; })
+    .order(d3.descending)
+    .size(Infinity);
+
+  //define as colunas que as tabelas devem exibir
+  dcTable1
+    .columns([
+      function (d) { return formatTime(d.datetime_rx); },
+      function (d) { return formatNumber(d.phaseCA); },
+      function (d) { return formatNumber(d.phaseCB); },
+      function (d) { return formatNumber(d.phaseCC); },
+    ]);
+  dcTable2
+    .columns([
+      function (d) { return formatTime(d.datetime_rx); },
+      function (d) { return formatNumber(d.temp); },
+    ]);
+  dcTable3
+    .columns([
+      function (d) { return formatTime(d.datetime_rx); },
+      //function (d) { return formatNumber(d.batl); }
+    ]);
+  dcTable4
+    .columns([
+      function (d) { return formatTime(d.datetime_rx); },
+      function (d) { return d.payloadHex; },
+      function (d) { return formatNumber(d.interval); },
+      function (d) { return formatNumber(d.snr); },
+      function (d) { return formatNumber(d.rssi); }
+    ]);
+
+  //variáveis para paginação das tabelas
+  var offset = 0;
+  var recs = window.innerHeight / 50;
+  //render chart and table
+  renderChartTable();
+  //função para exportar os dados visualizados em uma determinada página
+  function exportData() {
+    download(d3.csvFormat(ndx.all()), 'deviceData.csv', 'text/plain');
+  }
+  //função para habilitar desabilitar botões
+  function display() {
+    d3.select('#id_next')
+      .attr('disabled', (offset + recs) >= ndx.groupAll().reduceCount().value() ? 'true' : null);
+    d3.select('#id_previous')
+      .attr('disabled', offset <= 0 ? 'true' : null);
+  }
+  //função para atualizar paginação das tabelas
+  function update() {
+    dcTable1.beginSlice(offset); dcTable2.beginSlice(offset);
+    dcTable3.beginSlice(offset); dcTable4.beginSlice(offset);
+    dcTable1.endSlice(offset + recs); dcTable2.endSlice(offset + recs);
+    dcTable3.endSlice(offset + recs); dcTable4.endSlice(offset + recs);
+    display();
+  }
+  //função para ir para a próxima página das tabelas
+  function next() {
+    offset += recs;
+    update();
+    dcTable1.redraw(); dcTable2.redraw(); dcTable3.redraw(); dcTable4.redraw();
+  }
+  //função para ir para a página anterior das tabelas
+  function previous() {
+    offset -= recs;
+    if (offset < 0) offset = 0;
+    update();
+    dcTable1.redraw(); dcTable2.redraw(); dcTable3.redraw(); dcTable4.redraw();
+  }
+  //function to render chart and table
+  function renderChartTable() {
+    //define razão largura/altura para gráfico
+    var ratio = 2.4;
+    //define proporção de altura entre chart e rangeChart
+    var prop = 0.1;
+    //variáveis para altura e largura
+    var height;
+    var width;
+    //redefine número de registros para paginação da tabela em função da altura
+    recs = Math.round(window.innerHeight / 50);
+    //atualiza tabela
+    update();
+    //define propriedades dos gráficos
+    width = document.getElementById('myChart1').clientWidth;
+    if (document.getElementById('myChart2').clientWidth > width) {
+      width = document.getElementById('myChart2').clientWidth;
+    }
+    if (document.getElementById('myChart3').clientWidth > width) {
+      width = document.getElementById('myChart3').clientWidth;
+    }
+    height = Math.round(prop * width / ratio);
+    height = (height >= 50) ? height : 50;
+    dcRangeChart1.width(width); dcRangeChart2.width(width); dcRangeChart3.width(width);
+    dcRangeChart1.height(height); dcRangeChart2.height(height); dcRangeChart3.height(height);
+    dcRangeChart1.xAxis().ticks(Math.round(dcRangeChart1.width() / 190));
+    dcRangeChart2.xAxis().ticks(Math.round(dcRangeChart2.width() / 190));
+    dcRangeChart3.xAxis().ticks(Math.round(dcRangeChart3.width() / 190));
+    dcRangeChart1.yAxis().ticks(Math.round(dcRangeChart1.height() / 130));
+    dcRangeChart2.yAxis().ticks(Math.round(dcRangeChart2.height() / 130));
+    dcRangeChart3.yAxis().ticks(Math.round(dcRangeChart3.height() / 130));
+    height = Math.round(width / ratio) - dcRangeChart1.height();
+    height = (height >= 200) ? height : 200;
+    dcChart1.width(width); dcChart2.width(width); dcChart3.width(width);
+    dcChart1.height(height); dcChart2.height(height); dcChart3.height(height);
+    dcChartFCA.width(width);
+    dcChartFCB.width(width);
+    dcChartFCC.width(width);
+    //dcChartV.width(width);
+    dcChartTime.width(width);
+    dcChartFCA.height(height);
+    dcChartFCB.height(height);
+    dcChartFCC.height(height);
+    //dcChartV.height(height);
+    dcChartTime.height(height);
+    dcChartSNR.height(height);
+    dcChartRSSI.height(height);
+    dcChart1.xAxis().ticks(Math.round(dcChart1.width() / 190));
+    dcChart2.xAxis().ticks(Math.round(dcChart2.width() / 190));
+    dcChart3.xAxis().ticks(Math.round(dcChart3.width() / 190));
+    dcChart1.yAxis().ticks(Math.round(dcChart1.height() / 130));
+    dcChart2.yAxis().ticks(Math.round(dcChart2.height() / 130));
+    dcChart3.yAxis().ticks(Math.round(dcChart3.height() / 130));
+    dcChart1.yAxis().tickFormat(d3.format('~s'));
+    dcChart1.legend(dc.legend().x(80).y(height - 85).itemHeight(13).gap(5).horizontal(false).legendWidth(140).itemWidth(70));
+    dcChart2.legend(dc.legend().x(80).y(height - 50).itemHeight(13).gap(5).horizontal(false).legendWidth(140).itemWidth(70));
+    dcChart3.legend(dc.legend().x(80).y(height - 65).itemHeight(13).gap(5).horizontal(false).legendWidth(140).itemWidth(70));
+    dc.renderAll();
+  }
+  //render the chart again after onresize event
+  document.getElementsByTagName('BODY')[0].onresize = function () { renderChartTable(); };
+  //adiciona evento onclick aos botões id_next e id_previous
+  document.getElementById('id_next').addEventListener('click', next, false);
+  document.getElementById('id_previous').addEventListener('click', previous, false);
+  //adiciona evento onclick ao botão id_export
+  document.getElementById('id_export').addEventListener('click', exportData, false);
+}
+
+
 //função para preencher gráfico de tarifas (branca e convencional)
 function dcChartTariffs (valuesJson, dcChartName) {
   //proteção contra objetos com menos de 2 registros
   if (valuesJson.length < 2) return;
   //determina valores máximo e minimo da dimensão
-//  var maxTariff = valuesJson.reduce(function(max, d) { return (d.white_peak > max) ? d.white_peak : max; }, 0);
-  var maxTariff = 1.0,
-      minTariff = 0.0;
+  var maxTariff = valuesJson.reduce(function(max, d) { return (d.white_peak > max) ? d.white_peak : max; }, 0);
+  var minTariff = 0.0;
 
   //cria instância do crossfilter
   var ndx = crossfilter(valuesJson);
@@ -1365,16 +2085,6 @@ function dcChartTariffs (valuesJson, dcChartName) {
         ])
     .on('pretransition.hideshow', legendToggle)
     .legend(dc.legend().x(0).y(10).itemHeight(13).gap(5));
-
-  //comandos para remover da legenda as curvas auxiliares (mínimos e máximos)
-  //lineChartVaMax.legendables = function() { return [];};
-  //lineChartVaMin.legendables = function() { return [];};
-  //lineChartVbMax.legendables = function() { return [];};
-  //lineChartVbMin.legendables = function() { return [];};
-  //lineChartVcMax.legendables = function() { return [];};
-  //lineChartVcMin.legendables = function() { return [];};
-  //lineChartVlim1Lower.legendables = function() { return [];};
-  //lineChartVlim2Lower.legendables = function() { return [];};
 
   //renderiza gráfico
   dcChart.render();
@@ -1478,16 +2188,6 @@ function dcChartConsumptionDaily (valuesJson, dcChartName) {
     .on('pretransition.hideshow', legendToggle)
     .legend(dc.legend().x(0).y(10).itemHeight(13).gap(5));
 
-  //comandos para remover da legenda as curvas auxiliares (mínimos e máximos)
-  //lineChartVaMax.legendables = function() { return [];};
-  //lineChartVaMin.legendables = function() { return [];};
-  //lineChartVbMax.legendables = function() { return [];};
-  //lineChartVbMin.legendables = function() { return [];};
-  //lineChartVcMax.legendables = function() { return [];};
-  //lineChartVcMin.legendables = function() { return [];};
-  //lineChartVlim1Lower.legendables = function() { return [];};
-  //lineChartVlim2Lower.legendables = function() { return [];};
-
   //renderiza gráfico
   dcChart.render();
   renderChartTariffs();
@@ -1590,16 +2290,6 @@ function dcChartTypicalConsumption (valuesJson, dcChartName) {
     .on('pretransition.hideshow', legendToggle)
     .legend(dc.legend().x(0).y(10).itemHeight(13).gap(5));
 
-  //comandos para remover da legenda as curvas auxiliares (mínimos e máximos)
-  //lineChartVaMax.legendables = function() { return [];};
-  //lineChartVaMin.legendables = function() { return [];};
-  //lineChartVbMax.legendables = function() { return [];};
-  //lineChartVbMin.legendables = function() { return [];};
-  //lineChartVcMax.legendables = function() { return [];};
-  //lineChartVcMin.legendables = function() { return [];};
-  //lineChartVlim1Lower.legendables = function() { return [];};
-  //lineChartVlim2Lower.legendables = function() { return [];};
-
   //renderiza gráfico
   dcChart.render();
   renderChartTariffs();
@@ -1696,8 +2386,6 @@ function dcChartTableComparison1(valuesJson_white, valuesJson_coventional, value
           .attr('text-anchor', 'end')
           .append('tspan')
           .text(function(d) { return d.data; })});
-
-//  chartKWH.colors(d3.scaleOrdinal().range(['red','green','blue']));
 
   chartKWH.render();
 
@@ -2034,9 +2722,6 @@ function dcChartTableComparison2_barCharts(valuesJson, dcChartName1, dcChartName
     dcChartWs.margins().left = 20;
     dcChartWs.margins().right = 0;
     dcChartWs.margins().bottom = 70;
-
-    //dcChartGreen.width(100);
-    //dcChartGreen.height(50);
     dc.renderAll();
   }
   //render the chart again after onresize event

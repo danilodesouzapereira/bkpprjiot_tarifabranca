@@ -1,0 +1,26 @@
+<!--Remota para medidor de energia-->
+<div class="col-sm-3" style="padding:5px">
+  <div class="border border-secondary" style="padding-top:15px;border-radius:15px" id="monitor_{{ device.0.eui }}">
+    <h5>{{ device.0.desc }}</h5>
+    <p></p>
+    <p>Última leitura:</p>
+    <p id="datetime_rx_{{ device.0.eui }}">-</p>
+    <p id="pulseC_{{ device.0.eui }}">Leitura consumo: -</p>
+    <p id="pulseG_{{ device.0.eui }}">Leitura geração: -</p>
+    <p id="lid_{{ device.0.eui }}">Tampa: -</p>
+    <p id="status_{{ device.0.eui }}">Estado: -</p>
+    <p id="card_code_{{ device.0.eui }}">Cartão: -</p>
+    <p id="batl_{{ device.0.eui }}">Nível da bateria: -</p>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-6" style="padding-right: 5px">
+          <input id="turnOn_{{ device.0.eui }}" type="button" disabled onClick="turnOn('{{ device.0.eui }}')" class="btn btn-secondary" value="Ligar" style="margin-top:5px; margin-bottom:10px; width:100%; font-size:80%"/>
+        </div>
+        <div class="col-sm-6" style="padding-left: 5px">
+          <input id="turnOff_{{ device.0.eui }}" type="button" disabled onClick="turnOff('{{ device.0.eui }}')" class="btn btn-secondary" value="Cortar" style="margin-top:5px; margin-bottom:10px; width:100%; font-size:80%"/>
+        </div>
+      </div>
+    </div>
+    <p hidden id="server_{{ device.0.eui }}">{{ device.0.server.desc }}</p>
+  </div>
+</div>

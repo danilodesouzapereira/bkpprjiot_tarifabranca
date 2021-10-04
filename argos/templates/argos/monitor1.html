@@ -1,0 +1,15 @@
+<!--Sensor de tensão e corrente-->
+<div class="col-sm-3" style="padding:5px">
+  <div class="border border-secondary" style="padding-top:15px; border-radius:15px" id="monitor_{{ device.0.eui }}">
+    <h5>{{ device.0.desc }}</h5>
+    <p></p>
+    <p>Última leitura:</p>
+    <p id="datetime_rx_{{ device.0.eui }}">-</p>
+    <p id="va_{{ device.0.eui }}">Tensão fase A: -</p>
+    <p id="vb_{{ device.0.eui }}">Tensão fase B: -</p>
+    <p id="vc_{{ device.0.eui }}">Tensão fase C: -</p>
+    <p id="ia_{{ device.0.eui }}">Corrente fase A: -</p>
+    <p id="ib_{{ device.0.eui }}">Corrente fase B: -</p>
+    <p id="ic_{{ device.0.eui }}">Corrente fase C: -</p>
+  </div>
+</div>
