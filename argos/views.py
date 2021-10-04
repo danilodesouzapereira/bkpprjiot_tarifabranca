@@ -342,9 +342,11 @@ def whitetariff(request, mac):
 
     # Geração de dados, emulando a recuperação de dados do banco.
     meas_interval_minutes = 5   # intervalo em minutos entre medições
-    num_meas_days = 45  # número de dias de medição
+    num_meas_days = 32  # número de dias de medição
     num_meas = round((num_meas_days * 24 * 60) / meas_interval_minutes)  # número de medições
-    datetime_fin_max = datetime.now()
+    # datetime_fin_max = datetime.now()
+    # datetime_ini_min = datetime_fin_max + timedelta(minutes=-meas_interval_minutes * num_meas)
+    datetime_fin_max = datetime(2021, 7, 6, 12, 0, 0)
     datetime_ini_min = datetime_fin_max + timedelta(minutes=-meas_interval_minutes * num_meas)
 
     # Na primeira chamada deste método, os limites de datas são os limites máximos
@@ -379,22 +381,22 @@ def whitetariff(request, mac):
         # corrente média x curva típica (pu da média)
         if datetime_rx.weekday() == 5:
             # i_rated = 5 * loadshape_saturday[datetime_rx.hour]
-            i_rated = 5 * loadshape_1pu[datetime_rx.hour]
+            i_rated = 1.202307 * loadshape_1pu[datetime_rx.hour]
         elif datetime_rx.weekday() == 6:
             # i_rated = 5 * loadshape_sunday[datetime_rx.hour]
-            i_rated = 5 * loadshape_1pu[datetime_rx.hour]
+            i_rated = 1.202307 * loadshape_1pu[datetime_rx.hour]
         else:
             # i_rated = 5 * loadshape_weekday[datetime_rx.hour]
-            i_rated = 5 * loadshape_1pu[datetime_rx.hour]
+            i_rated = 1.202307 * loadshape_1pu[datetime_rx.hour]
 
-        #debug
-        if datetime_rx.day == 26 and datetime_rx.month == 8 and datetime_rx.hour == 12:
-            i_rated *= 3
+        # #debug
+        # if datetime_rx.day == 26 and datetime_rx.month == 8 and datetime_rx.hour == 12:
+        #     i_rated *= 3
 
         # amps = np.random.normal(i_rated, 1.0, 4)  # vetor de 4 correntes aleatórias
         amps = [i_rated, i_rated, i_rated, i_rated]
-        ia, ib, ic, id = round(float(amps[0]), 2), round(float(amps[1]), 2), round(float(amps[2]), 2), round(
-            float(amps[3]), 2)
+        ia, ib, ic, id = round(float(amps[0]), 5), round(float(amps[1]), 5), round(float(amps[2]), 5), round(
+            float(amps[3]), 5)
 
         # if datetime_rx.month == 9 and datetime_rx.day == 16 and datetime_rx.hour == 12:
         #     ia, ib, ic, id = 2 * ia, 2 * ib, 2 * ic, 2 * id
@@ -402,8 +404,8 @@ def whitetariff(request, mac):
         pa, pb, pc, pd = va * ia * pf, vb * ib * pf, vc * ic * pf, va * id * pf
         qa, qb, qc, qd = va * ia * sqrt(1.0 - pf * pf), vb * ib * sqrt(1.0 - pf * pf), vc * ic * sqrt(
             1.0 - pf * pf), va * id * sqrt(1.0 - pf * pf)
-        pa, pb, pc, pd = round(pa, 2), round(pb, 2), round(pc, 2), round(pd, 2)
-        qa, qb, qc, qd = round(qa, 2), round(qb, 2), round(qc, 2), round(qd, 2)
+        pa, pb, pc, pd = round(pa, 5), round(pb, 5), round(pc, 5), round(pd, 5)
+        qa, qb, qc, qd = round(qa, 5), round(qb, 5), round(qc, 5), round(qd, 5)
         data_list.append([datetime_rx, va, vb, vc,
                           ia, ib, ic, id,
                           pa, pb, pc, pd,
@@ -418,10 +420,10 @@ def whitetariff(request, mac):
     for i in range(len(data_list)):
         if i == 0:
             values = data_list[0]
-            values.append(0.01)   # 16 - Ea acumulado [kWh]
-            values.append(0.01)   # 17 - Eb acumulado [kWh]
-            values.append(0.01)   # 18 - Ec acumulado [kWh]
-            values.append(0.01)   # 19 - Ed acumulado [kWh]
+            values.append(0.0)   # 16 - Ea acumulado [kWh]
+            values.append(0.0)   # 17 - Eb acumulado [kWh]
+            values.append(0.0)   # 18 - Ec acumulado [kWh]
+            values.append(0.0)   # 19 - Ed acumulado [kWh]
         else:
             values = data_list[i]
             values_prev = data_list[i-1]
@@ -430,10 +432,10 @@ def whitetariff(request, mac):
             Pa, Pb, Pc, Pd = values[8], values[9], values[10], values[11]
             dEa, dEb, dEc, dEd = Pa * dt / 1000.0, Pb * dt / 1000.0, Pc * dt / 1000.0, Pd * dt / 1000.0
             Ea, Eb, Ec, Ed = Ea_prev + dEa, Eb_prev + dEb, Ec_prev + dEc, Ed_prev + dEd
-            values.append(round(Ea, 2))    # 16 - Ea acumulado [kWh]
-            values.append(round(Eb, 2))    # 17 - Eb acumulado [kWh]
-            values.append(round(Ec, 2))    # 18 - Ec acumulado [kWh]
-            values.append(round(Ed, 2))    # 19 - Ed acumulado [kWh]
+            values.append(round(Ea, 6))    # 16 - Ea acumulado [kWh]
+            values.append(round(Eb, 6))    # 17 - Eb acumulado [kWh]
+            values.append(round(Ec, 6))    # 18 - Ec acumulado [kWh]
+            values.append(round(Ed, 6))    # 19 - Ed acumulado [kWh]
 
     """
     Montagem das curvas de consumo com granularidade horária
@@ -459,30 +461,29 @@ def whitetariff(request, mac):
     """
     # teste - projeção linear do consumo
     data_list_energy_proj = [[v[0], v[16], v[17], v[18], v[19]] for v in data_list_hour]
-    billing_dt1 = data_list_hour[0][0]
-    billing_dt2 = billing_dt1 + timedelta(days=30)
-    tot_hours = (data_list_energy_proj[len(data_list_energy_proj)-1][0] - data_list_energy_proj[0][0]).total_seconds() / 3600
-    ea_rate = (data_list_energy_proj[len(data_list_energy_proj) - 1][1] - data_list_energy_proj[0][1]) / tot_hours
-    eb_rate = (data_list_energy_proj[len(data_list_energy_proj) - 1][2] - data_list_energy_proj[0][2]) / tot_hours
-    ec_rate = (data_list_energy_proj[len(data_list_energy_proj) - 1][3] - data_list_energy_proj[0][3]) / tot_hours
-    ed_rate = (data_list_energy_proj[len(data_list_energy_proj) - 1][4] - data_list_energy_proj[0][4]) / tot_hours
-    while True:
-        v_last = data_list_energy_proj[len(data_list_energy_proj) - 1]
-        dt_proj = v_last[0] + timedelta(hours=1)
-        ea_proj, eb_proj, ec_proj, ed_proj = v_last[1] + ea_rate, v_last[2] + eb_rate, v_last[3] + ec_rate, v_last[4] + ed_rate
-        if dt_proj > billing_dt2:
-            break
-        data_list_energy_proj.append([dt_proj, ea_proj, eb_proj, ec_proj, ed_proj])
+    # billing_dt1 = data_list_hour[0][0]
+    # billing_dt2 = billing_dt1 + timedelta(days=30)
+    # tot_hours = (data_list_energy_proj[len(data_list_energy_proj)-1][0] - data_list_energy_proj[0][0]).total_seconds() / 3600
+    # ea_rate = (data_list_energy_proj[len(data_list_energy_proj) - 1][1] - data_list_energy_proj[0][1]) / tot_hours
+    # eb_rate = (data_list_energy_proj[len(data_list_energy_proj) - 1][2] - data_list_energy_proj[0][2]) / tot_hours
+    # ec_rate = (data_list_energy_proj[len(data_list_energy_proj) - 1][3] - data_list_energy_proj[0][3]) / tot_hours
+    # ed_rate = (data_list_energy_proj[len(data_list_energy_proj) - 1][4] - data_list_energy_proj[0][4]) / tot_hours
+    # while True:
+    #     v_last = data_list_energy_proj[len(data_list_energy_proj) - 1]
+    #     dt_proj = v_last[0] + timedelta(hours=1)
+    #     ea_proj, eb_proj, ec_proj, ed_proj = v_last[1] + ea_rate, v_last[2] + eb_rate, v_last[3] + ec_rate, v_last[4] + ed_rate
+    #     if dt_proj > billing_dt2:
+    #         break
+    #     data_list_energy_proj.append([dt_proj, ea_proj, eb_proj, ec_proj, ed_proj])
 
     # função para cálculo do valor total da fatura
     customer_type = 'B1_1'
-    summary_costs = cost_conventional(data_list_energy_proj, customer_type, True)
+    summary_costs = BillConventionalTariff(data_list_energy_proj, customer_type, True)
 
 
     """
     ABA 1 - Montagem dos dados relativos às tarifas
     """
-    time_periods = 24
     data_list_tariffs = []
     # fora ponta
     for i in range(0, 17):
@@ -562,26 +563,6 @@ def whitetariff(request, mac):
     Considera o filtro de data inicial e data final
     """
 
-    # função para decidir se o dado pode ser utilizado para a curva típica de consumo
-    # weekdays: 0 (2a.f), 1 (3a.f), 2 (4a.f), ...
-    # seasons_consider: 1 (verão), 2 (outono), 3 (inverno), 4 (primavera)
-    dt1, dt2, dt3 = {'month': 1, 'day': 1}, {'month': 3, 'day': 21}, {'month': 6, 'day': 21}
-    dt4, dt5 = {'month': 9, 'day': 23}, {'month': 12, 'day': 21}
-    def consider_data(v):
-        filter_week_day = v[0].weekday() in days_consider
-        d1 = datetime(v[0].year, dt1['month'], dt1['day'])
-        d2 = datetime(v[0].year, dt2['month'], dt2['day'])
-        d3 = datetime(v[0].year, dt3['month'], dt3['day'])
-        d4 = datetime(v[0].year, dt4['month'], dt4['day'])
-        d5 = datetime(v[0].year, dt5['month'], dt5['day'])
-        filter1 = d1 <= v[0] < d2 and 1 in seasons_consider  # verão
-        filter2 = d2 <= v[0] < d3 and 2 in seasons_consider  # outono
-        filter3 = d3 <= v[0] < d4 and 3 in seasons_consider  # inverno
-        filter4 = d4 <= v[0] < d5 and 4 in seasons_consider  # primavera
-        filter5 = d5 <= v[0] and 1 in seasons_consider       # verão
-        filter_season = filter1 or filter2 or filter3 or filter4 or filter5
-        return filter_week_day and filter_season
-
     # lista cujas colunas são: patamar (h), kwh típico, destaque interm., destaque ponta
     typical_consumption = [[i, 0.0, 0.0, 0.0] for i in range(24)]
     count = [0 for i in range(24)]
@@ -592,7 +573,7 @@ def whitetariff(request, mac):
         if val[0] > datetime_fin:
             break
         # aplica filtros específicos
-        if not consider_data(val):
+        if not ConsiderData(val, days_consider, seasons_consider):
             continue
         # acrescenta o consumo total do patamar horário (acumulado menos o acumulado anterior)
         if i == 0:
@@ -641,9 +622,9 @@ def whitetariff(request, mac):
         data_list_energy_hour.append([val[0], val[16], val[17], val[18], val[19]])
 
     # cálculo da fatura considerando tarifa branca, sem bandeiras
-    data_list_comp1_white = cost_white(data_list_energy_hour)[0:3]
+    data_list_comp1_white = BillWhiteTariff(data_list_energy_hour)[0:3]
     # cálculo da fatura considerando tarifa convencional, sem bandeiras
-    data_list_comp1_conv = cost_conventional(data_list_energy_hour, 'B1_1', False, None)
+    data_list_comp1_conv = BillConventionalTariff(data_list_energy_hour, 'B1_1', False, 0)
 
     # calcula resultados (total branca, total convencional e diferença)
     total_white = round(data_list_comp1_white[0][6] + data_list_comp1_white[1][6] + data_list_comp1_white[2][6], 2)
@@ -660,29 +641,29 @@ def whitetariff(request, mac):
     kWh, R$/kWh, R$(energia), %ICMS, R$(ICMS), R$(total)
     """
     # cálculo da fatura considerando tarifa branca e bandeira verde
-    data_list_comp2_white_green = cost_white(data_list_energy_hour, 'VD')
+    data_list_comp2_white_green = BillWhiteTariff(data_list_energy_hour, 'VD')
     # cálculo da fatura considerando tarifa convencional e bandeira verde
-    data_list_comp2_conv_green = cost_conventional(data_list_energy_hour, 'B1_1', False, 'VD')
+    data_list_comp2_conv_green = BillConventionalTariff(data_list_energy_hour, 'B1_1', False, 0)
 
     # cálculo da fatura considerando tarifa branca e bandeira amarela
-    data_list_comp2_white_yellow = cost_white(data_list_energy_hour, 'AM')
+    data_list_comp2_white_yellow = BillWhiteTariff(data_list_energy_hour, 'AM')
     # cálculo da fatura considerando tarifa convencional e bandeira amarela
-    data_list_comp2_conv_yellow = cost_conventional(data_list_energy_hour, 'B1_1', False, 'AM')
+    data_list_comp2_conv_yellow = BillConventionalTariff(data_list_energy_hour, 'B1_1', False, 1)
 
     # cálculo da fatura considerando tarifa branca e bandeira vermelha I
-    data_list_comp2_white_red1 = cost_white(data_list_energy_hour, 'V1')
+    data_list_comp2_white_red1 = BillWhiteTariff(data_list_energy_hour, 'V1')
     # cálculo da fatura considerando tarifa convencional e bandeira vermelha I
-    data_list_comp2_conv_red1 = cost_conventional(data_list_energy_hour, 'B1_1', False, 'V1')
+    data_list_comp2_conv_red1 = BillConventionalTariff(data_list_energy_hour, 'B1_1', False, 2)
 
     # cálculo da fatura considerando tarifa branca e bandeira vermelha II
-    data_list_comp2_white_red2 = cost_white(data_list_energy_hour, 'V2')
+    data_list_comp2_white_red2 = BillWhiteTariff(data_list_energy_hour, 'V2')
     # cálculo da fatura considerando tarifa convencional e bandeira vermelha II
-    data_list_comp2_conv_red2 = cost_conventional(data_list_energy_hour, 'B1_1', False, 'V2')
+    data_list_comp2_conv_red2 = BillConventionalTariff(data_list_energy_hour, 'B1_1', False, 3)
 
     # cálculo da fatura considerando tarifa branca e bandeira escassez hídrica (ws: water scarcity)
-    data_list_comp2_white_ws = cost_white(data_list_energy_hour, 'EH')
+    data_list_comp2_white_ws = BillWhiteTariff(data_list_energy_hour, 'EH')
     # cálculo da fatura considerando tarifa convencional e bandeira escassez hídrica
-    data_list_comp2_conv_ws = cost_conventional(data_list_energy_hour, 'B1_1', False, 'EH')
+    data_list_comp2_conv_ws = BillConventionalTariff(data_list_energy_hour, 'B1_1', False, 4)
 
 
     """
@@ -697,23 +678,8 @@ def whitetariff(request, mac):
     # curva típica de consumo
     typical_kw = [{'t': val[0], 'kw_tot': val[1], 'highlight_interm': val[2], 'highlight_peak': val[3]} for val in typical_consumption]
 
-
-    # dias da semana a serem marcados/desmarcados
-    ck2af = 1 if 0 in days_consider else 0
-    ck3af = 1 if 1 in days_consider else 0
-    ck4af = 1 if 2 in days_consider else 0
-    ck5af = 1 if 3 in days_consider else 0
-    ck6af = 1 if 4 in days_consider else 0
-    ckSab = 1 if 5 in days_consider else 0
-    ckDom = 1 if 6 in days_consider else 0
-    json_days_filter = {'ck2af': ck2af, 'ck3af': ck3af, 'ck4af': ck4af, 'ck5af': ck5af, 'ck6af': ck6af, 'ckSab': ckSab, 'ckDom': ckDom}
-
-    # estações do ano a serem marcadas/desmarcadas
-    ckSummer = 1 if 1 in seasons_consider else 0
-    ckFall = 1 if 2 in seasons_consider else 0
-    ckWinter = 1 if 3 in seasons_consider else 0
-    ckSpring = 1 if 4 in seasons_consider else 0
-    json_seasons_filter = {'ckSummer': ckSummer, 'ckFall': ckFall, 'ckWinter': ckWinter, 'ckSpring': ckSpring}
+    # definir os estados dos checkboxes de dias da semana e estações do ano
+    json_days_filter, json_seasons_filter = DaysSeasonsConsider(days_consider, seasons_consider)
 
     # dados relativos à comparação de tarifas da aba 4 (Comparação de tarifas sem bandeiras)
     json_comparison_white = [{'description': v[0], 'kwh': v[1], 'tariff': v[2], 'cost_energy': v[3],
@@ -725,32 +691,25 @@ def whitetariff(request, mac):
     # gráfico de pizza
     json_results_comparison_kwh = [{'period': v[0], 'value': v[1]} for v in data_list_pie_kwh]
 
-    def currency_format_brazil(value_ini):
-        value = "R$ {:,.2f}".format(value_ini)
-        main_currency, fractional_currency = value.split(".")[0], value.split(".")[1]
-        new_main_currency = main_currency.replace(",", ".")
-        value = new_main_currency + ',' + fractional_currency
-        return value
-
     # dados relativos à comparação de tarifas aba 5 (Comparação de tarifas com bandeiras)
     json_comparison2_white = []
     for i in range(len(data_list_comp2_white_green)):
         desc = data_list_comp2_white_green[i][0]
-        tot_green = currency_format_brazil(data_list_comp2_white_green[i][6])
-        tot_yellow = currency_format_brazil(data_list_comp2_white_yellow[i][6])
-        tot_red1 = currency_format_brazil(data_list_comp2_white_red1[i][6])
-        tot_red2 = currency_format_brazil(data_list_comp2_white_red2[i][6])
-        tot_ws = currency_format_brazil(data_list_comp2_white_ws[i][6])
+        tot_green = CurrencyFormatBrazil(data_list_comp2_white_green[i][6])
+        tot_yellow = CurrencyFormatBrazil(data_list_comp2_white_yellow[i][6])
+        tot_red1 = CurrencyFormatBrazil(data_list_comp2_white_red1[i][6])
+        tot_red2 = CurrencyFormatBrazil(data_list_comp2_white_red2[i][6])
+        tot_ws = CurrencyFormatBrazil(data_list_comp2_white_ws[i][6])
         json_comparison2_white.append({'description': desc, 'total_green': tot_green, 'total_yellow': tot_yellow,
                                        'total_red1': tot_red1, 'total_red2': tot_red2, 'total_ws': tot_ws})
     json_comparison2_conventional = []
     for i in range(len(data_list_comp2_conv_green)):
         desc = data_list_comp2_conv_green[i][0]
-        tot_green = currency_format_brazil(data_list_comp2_conv_green[i][6])
-        tot_yellow = currency_format_brazil(data_list_comp2_conv_yellow[i][6])
-        tot_red1 = currency_format_brazil(data_list_comp2_conv_red1[i][6])
-        tot_red2 = currency_format_brazil(data_list_comp2_conv_red2[i][6])
-        tot_ws = currency_format_brazil(data_list_comp2_conv_ws[i][6])
+        tot_green = CurrencyFormatBrazil(data_list_comp2_conv_green[i][6])
+        tot_yellow = CurrencyFormatBrazil(data_list_comp2_conv_yellow[i][6])
+        tot_red1 = CurrencyFormatBrazil(data_list_comp2_conv_red1[i][6])
+        tot_red2 = CurrencyFormatBrazil(data_list_comp2_conv_red2[i][6])
+        tot_ws = CurrencyFormatBrazil(data_list_comp2_conv_ws[i][6])
         json_comparison2_conventional.append({'description': desc, 'total_green': tot_green, 'total_yellow': tot_yellow,
                                               'total_red1': tot_red1, 'total_red2': tot_red2, 'total_ws': tot_ws})
 

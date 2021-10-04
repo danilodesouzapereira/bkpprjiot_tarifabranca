@@ -1713,7 +1713,8 @@ function dcChartTableComparison1(valuesJson_white, valuesJson_coventional, value
 }
 
 // função para montagem das tabelas e dos gráficos para comparação tarifa branca x convencional (com bandeiras)
-function dcChartTableComparison2(valuesJson_white, valuesJson_conv, dcTableName1, dcTableName2, dcTableName3, dcTableName4, dcTableName5, dcTableName6, dcTableName7, dcTableName8)
+function dcChartTableComparison2(valuesJson_white, valuesJson_conv, dcTableName1, dcTableName2, dcTableName3, dcTableName4,
+                                 dcTableName5, dcTableName6, dcTableName7, dcTableName8, dcTableName9, dcTableName10)
 {
   //cria crossfilter e dimensão para dados de tarifa branca
   var ndx1 = crossfilter(valuesJson_white);
@@ -1724,14 +1725,16 @@ function dcChartTableComparison2(valuesJson_white, valuesJson_conv, dcTableName1
   var dim_conv = ndx2.dimension(function(d) {return d;});
 
   //cria tabelas
-  var dcTable1 = dc.dataTable(dcTableName1);
-  var dcTable2 = dc.dataTable(dcTableName2);
-  var dcTable3 = dc.dataTable(dcTableName3);
-  var dcTable4 = dc.dataTable(dcTableName4);
-  var dcTable5 = dc.dataTable(dcTableName5);
-  var dcTable6 = dc.dataTable(dcTableName6);
-  var dcTable7 = dc.dataTable(dcTableName7);
-  var dcTable8 = dc.dataTable(dcTableName8);
+  var dcTable1  = dc.dataTable(dcTableName1);   // verde
+  var dcTable2  = dc.dataTable(dcTableName2);
+  var dcTable3  = dc.dataTable(dcTableName3);   // amarela
+  var dcTable4  = dc.dataTable(dcTableName4);
+  var dcTable5  = dc.dataTable(dcTableName5);   // vermelha patamar I
+  var dcTable6  = dc.dataTable(dcTableName6);
+  var dcTable7  = dc.dataTable(dcTableName7);   // vermelha patamar II
+  var dcTable8  = dc.dataTable(dcTableName8);
+  var dcTable9  = dc.dataTable(dcTableName9);   // escassez hídrica
+  var dcTable10 = dc.dataTable(dcTableName10);
 
   //define tabela2
   dcTable1
@@ -1774,6 +1777,16 @@ function dcChartTableComparison2(valuesJson_white, valuesJson_conv, dcTableName1
     .group(function(d) {return '';})
     .showGroups(false)
     .size(Infinity);
+  dcTable9
+    .dimension(dim_white)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
+  dcTable10
+    .dimension(dim_conv)
+    .group(function(d) {return '';})
+    .showGroups(false)
+    .size(Infinity);
 
   //define as colunas das tabelas (branca e convencional) para bandeira verde
   dcTable1
@@ -1786,6 +1799,7 @@ function dcChartTableComparison2(valuesJson_white, valuesJson_conv, dcTableName1
       function(d) {return d.description;},
       function(d) {return d.total_green;}
     ]);
+  //define as colunas das tabelas (branca e convencional) para bandeira amarela
   dcTable3
     .columns([
       function(d) {return d.description;},
@@ -1796,6 +1810,7 @@ function dcChartTableComparison2(valuesJson_white, valuesJson_conv, dcTableName1
       function(d) {return d.description;},
       function(d) {return d.total_yellow;}
     ]);
+  //define as colunas das tabelas (branca e convencional) para bandeira vermelha patamar I
   dcTable5
     .columns([
       function(d) {return d.description;},
@@ -1806,6 +1821,7 @@ function dcChartTableComparison2(valuesJson_white, valuesJson_conv, dcTableName1
       function(d) {return d.description;},
       function(d) {return d.total_red1;}
     ]);
+  //define as colunas das tabelas (branca e convencional) para bandeira vermelha patamar II
   dcTable7
     .columns([
       function(d) {return d.description;},
@@ -1815,6 +1831,17 @@ function dcChartTableComparison2(valuesJson_white, valuesJson_conv, dcTableName1
     .columns([
       function(d) {return d.description;},
       function(d) {return d.total_red2;}
+    ]);
+  //define as colunas das tabelas (branca e convencional) para bandeira escassez hídrica
+  dcTable9
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return d.total_ws;}
+    ]);
+  dcTable10
+    .columns([
+      function(d) {return d.description;},
+      function(d) {return d.total_ws;}
     ]);
 
   //render chart and table
@@ -1829,7 +1856,7 @@ function dcChartTableComparison2(valuesJson_white, valuesJson_conv, dcTableName1
 }
 
 // função para preencher gráficos de barras comparando tarifa convencional x branca
-function dcChartTableComparison2_barCharts(valuesJson, dcChartName1, dcChartName2, dcChartName3, dcChartName4)
+function dcChartTableComparison2_barCharts(valuesJson, dcChartName1, dcChartName2, dcChartName3, dcChartName4, dcChartName5)
 {
   //cria crossfilter e dimensão para dados de tarifa branca
   var ndx = crossfilter(valuesJson);
@@ -1840,23 +1867,27 @@ function dcChartTableComparison2_barCharts(valuesJson, dcChartName1, dcChartName
   var yellowGroup = tariffDim.group().reduceSum(function(d) {return d.cost_yellow;});
   var red1Group = tariffDim.group().reduceSum(function(d) {return d.cost_red1;});
   var red2Group = tariffDim.group().reduceSum(function(d) {return d.cost_red2;});
+  var wsGroup = tariffDim.group().reduceSum(function(d) {return d.cost_ws;});
 
   //define valores máximos
   var maxGreen = valuesJson.reduce(function(max, d) { return (d.cost_green > max) ? d.cost_green : max; }, 0);
   var maxYellow = valuesJson.reduce(function(max, d) { return (d.cost_yellow > max) ? d.cost_yellow : max; }, 0);
   var maxRed1 = valuesJson.reduce(function(max, d) { return (d.cost_red1 > max) ? d.cost_red1 : max; }, 0);
   var maxRed2 = valuesJson.reduce(function(max, d) { return (d.cost_red2 > max) ? d.cost_red2 : max; }, 0);
+  var maxWs = valuesJson.reduce(function(max, d) { return (d.cost_ws > max) ? d.cost_ws : max; }, 0);
   var maxValue = maxGreen;
   if(maxYellow > maxValue) {maxValue = maxYellow;}
   if(maxRed1 > maxValue) {maxValue = maxRed1;}
   if(maxRed2 > maxValue) {maxValue = maxRed2;}
+  if(maxWs > maxValue) {maxValue = maxWs;}
 
   var dcChartGreen = dc.barChart(dcChartName1);
   var dcChartYellow = dc.barChart(dcChartName2);
   var dcChartRed1 = dc.barChart(dcChartName3);
   var dcChartRed2 = dc.barChart(dcChartName4);
+  var dcChartWs = dc.barChart(dcChartName5);
   dcChartGreen
-    .width(250)
+    .width(120)
     .height(200)
     .colors('green')
     .x(d3.scaleBand())
@@ -1878,7 +1909,7 @@ function dcChartTableComparison2_barCharts(valuesJson, dcChartName1, dcChartName
         });
 
   dcChartYellow
-    .width(250)
+    .width(120)
     .height(200)
     .colors('yellow')
     .x(d3.scaleBand())
@@ -1900,7 +1931,7 @@ function dcChartTableComparison2_barCharts(valuesJson, dcChartName1, dcChartName
         });
 
   dcChartRed1
-    .width(250)
+    .width(120)
     .height(200)
     .colors('red')
     .x(d3.scaleBand())
@@ -1922,7 +1953,7 @@ function dcChartTableComparison2_barCharts(valuesJson, dcChartName1, dcChartName
         });
 
   dcChartRed2
-    .width(250)
+    .width(120)
     .height(200)
     .colors('red')
     .x(d3.scaleBand())
@@ -1943,8 +1974,30 @@ function dcChartTableComparison2_barCharts(valuesJson, dcChartName1, dcChartName
              .attr("dx", "-1em");
         });
 
+  dcChartWs
+    .width(120)
+    .height(200)
+    .colors('#4B0082')
+    .x(d3.scaleBand())
+    .y(d3.scaleLinear().domain([0.0, 1.2 * maxValue]))
+    .xUnits(dc.units.ordinal)
+    .yAxisLabel('Custo [R$]', 15)
+    .brushOn(false)
+    .barPadding(0.5)
+    .dimension(tariffDim)
+    .group(wsGroup)
+    .renderLabel(true)
+    .on('pretransition', function(chart) {
+        chart.select('.axis.x')
+             .attr("text-anchor", "end")
+             .selectAll("text")
+             .attr("transform", "rotate(-45)")
+             .attr("dy", "-0.7em")
+             .attr("dx", "-1em");
+        });
+
   //renderiza gráficos
-  dcChartGreen.render(); dcChartYellow.render(); dcChartRed1.render(); dcChartRed2.render();
+  dcChartGreen.render(); dcChartYellow.render(); dcChartRed1.render(); dcChartRed2.render(); dcChartWs.render();
 
   renderCharts();
   function renderCharts()
@@ -1963,19 +2016,24 @@ function dcChartTableComparison2_barCharts(valuesJson, dcChartName1, dcChartName
     dcChartRed1.yAxis().ticks(0);
     dcChartRed2.yAxis().tickFormat(function(v) { return ""; });
     dcChartRed2.yAxis().ticks(0);
+    dcChartWs.yAxis().tickFormat(function(v) { return ""; });
+    dcChartWs.yAxis().ticks(0);
 
     dcChartGreen.margins().left = 20;
-    dcChartGreen.margins().right = 60;
+    dcChartGreen.margins().right = 0;
     dcChartGreen.margins().bottom = 70;
     dcChartYellow.margins().left = 20;
-    dcChartYellow.margins().right = 60;
+    dcChartYellow.margins().right = 0;
     dcChartYellow.margins().bottom = 70;
     dcChartRed1.margins().left = 20;
-    dcChartRed1.margins().right = 60;
+    dcChartRed1.margins().right = 0;
     dcChartRed1.margins().bottom = 70;
     dcChartRed2.margins().left = 20;
-    dcChartRed2.margins().right = 60;
+    dcChartRed2.margins().right = 0;
     dcChartRed2.margins().bottom = 70;
+    dcChartWs.margins().left = 20;
+    dcChartWs.margins().right = 0;
+    dcChartWs.margins().bottom = 70;
 
     //dcChartGreen.width(100);
     //dcChartGreen.height(50);

@@ -3,7 +3,78 @@ from datetime import datetime
 from .models import TariffFlag, Tariff, TaxIcms, TaxPisCofins
 
 
-def cost_white(data_list_energy_hour, flag_name = None):
+"""
+Função para formatar string de valor monetário
+"""
+def CurrencyFormatBrazil(value_ini):
+    value = "R$ {:,.2f}".format(value_ini)
+    main_currency, fractional_currency = value.split(".")[0], value.split(".")[1]
+    new_main_currency = main_currency.replace(",", ".")
+    value = new_main_currency + ',' + fractional_currency
+    return value
+
+
+"""
+Função para decidir se o dado pode ser utilizado para a curva típica de consumo
+"""
+def ConsiderData(v, days_consider, seasons_consider):
+    dt1, dt2, dt3 = {'month': 1, 'day': 1}, {'month': 3, 'day': 21}, {'month': 6, 'day': 21}
+    dt4, dt5 = {'month': 9, 'day': 23}, {'month': 12, 'day': 21}
+    filter_week_day = v[0].weekday() in days_consider
+    d1 = datetime(v[0].year, dt1['month'], dt1['day'])
+    d2 = datetime(v[0].year, dt2['month'], dt2['day'])
+    d3 = datetime(v[0].year, dt3['month'], dt3['day'])
+    d4 = datetime(v[0].year, dt4['month'], dt4['day'])
+    d5 = datetime(v[0].year, dt5['month'], dt5['day'])
+    filter1 = d1 <= v[0] < d2 and 1 in seasons_consider  # verão
+    filter2 = d2 <= v[0] < d3 and 2 in seasons_consider  # outono
+    filter3 = d3 <= v[0] < d4 and 3 in seasons_consider  # inverno
+    filter4 = d4 <= v[0] < d5 and 4 in seasons_consider  # primavera
+    filter5 = d5 <= v[0] and 1 in seasons_consider  # verão
+    filter_season = filter1 or filter2 or filter3 or filter4 or filter5
+    return filter_week_day and filter_season
+
+
+"""
+Função para definir os estados dos checkboxes relativos aos dias da semana 
+e as estações do ano a serem considerados, em função do filtro do usuário
+"""
+def DaysSeasonsConsider(days_consider, seasons_consider):
+    # dias da semana a serem marcados/desmarcados
+    ck2af = 1 if 0 in days_consider else 0
+    ck3af = 1 if 1 in days_consider else 0
+    ck4af = 1 if 2 in days_consider else 0
+    ck5af = 1 if 3 in days_consider else 0
+    ck6af = 1 if 4 in days_consider else 0
+    ckSab = 1 if 5 in days_consider else 0
+    ckDom = 1 if 6 in days_consider else 0
+    json_days_filter = {'ck2af': ck2af, 'ck3af': ck3af, 'ck4af': ck4af, 'ck5af': ck5af, 'ck6af': ck6af, 'ckSab': ckSab,
+                        'ckDom': ckDom}
+    # estações do ano a serem marcadas/desmarcadas
+    ckSummer = 1 if 1 in seasons_consider else 0
+    ckFall = 1 if 2 in seasons_consider else 0
+    ckWinter = 1 if 3 in seasons_consider else 0
+    ckSpring = 1 if 4 in seasons_consider else 0
+    json_seasons_filter = {'ckSummer': ckSummer, 'ckFall': ckFall, 'ckWinter': ckWinter, 'ckSpring': ckSpring}
+    return json_days_filter, json_seasons_filter
+
+
+"""
+Função para mapear nome da bandeira e valor da bandeira
+"""
+def flag_value(flag_name, flag_tariffs):
+    if flag_name == 'VD': value = flag_tariffs[0]
+    elif flag_name == 'AM': value = flag_tariffs[1]
+    elif flag_name == 'V1': value = flag_tariffs[2]
+    elif flag_name == 'V2': value = flag_tariffs[3]
+    else: value = flag_tariffs[4]
+    return value
+
+
+"""
+Função para cálculo do valor da fatura considerando Tarifa Branca
+"""
+def BillWhiteTariff(data_list_energy_hour, flag_name = None):
     # DADO EXTERNO: valores de tarifa branca por patamar
     hourly_white_tariffs = [0.43664, 0.61737, 0.96013]
 
@@ -14,15 +85,6 @@ def cost_white(data_list_energy_hour, flag_name = None):
     # bandeira, valor (R$/kWh sem impostos)
     # 0: verde, 1: amarela, 2: vermelha pat. 1, 3: vermelha pat. 2, 4: escassez hídrica
     flag_tariffs = [0.0, 0.01874, 0.03971, 0.09492, 0.1420]
-
-    # função para mapear nome da bandeira e valor da bandeira
-    def flag_value(flag_name, flag_tariffs):
-        if flag_name == 'VD': value = flag_tariffs[0]
-        elif flag_name == 'AM': value = flag_tariffs[1]
-        elif flag_name == 'V1': value = flag_tariffs[2]
-        elif flag_name == 'V2': value = flag_tariffs[3]
-        else: value = flag_tariffs[4]
-        return value
 
     # calcula os consumos de energia (kWh) por patamar horário
     kwh_offpeak, kwh_intermediate, kwh_peak = 0.0, 0.0, 0.0
@@ -80,13 +142,13 @@ def cost_white(data_list_energy_hour, flag_name = None):
 
 
 """
-Função para cálculo do valor total da fatura com tarifa convencional
+Função para cálculo do valor da fatura considerando Tarifa Convencional
 - data_list_energy_proj: lista com os valores de consumo
 - customer_type: tipo/classe do consumidor (B1_1, B1_2, ..., B2_1, B2_2, ...
 - use_valid_flags: usar (ou não) as bandeiras vigentes
 - simulated_flag: id da bandeira, começando em 0 (verde), 1 (amarela), ...
 """
-def cost_conventional(data_list_energy_proj, customer_type, use_valid_flags, simulated_flag = 0):
+def BillConventionalTariff(data_list_energy_proj, customer_type, use_valid_flags, simulated_flag = 0):
 
     # Recupera do banco os dados históricos de bandeira, identificando
     # os valores mais recentes de cada bandeira
